@@ -1,0 +1,14 @@
+{
+  "users": [
+    {
+      "username": "amanalam",
+      "password": "$2b$10$A4vzoJH.FymPUZw7mHJlnuCASQUv4gkhNy41hGIh3KtBbhOaQebNy"
+    }
+  ],
+  "messages": [
+    {
+      "username": "amanalam",
+      "text": "Hey "
+    }
+  ]
+}
