@@ -5,38 +5,64 @@
 <title>WhatsApp Clone</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:sans-serif;background:#075E54}
+body{font-family:sans-serif;background:#075E54;height:100vh}
 .box{background:white;max-width:400px;margin:80px auto;padding:30px;border-radius:10px}
 h2{color:#075E54;text-align:center;margin-bottom:20px}
 input{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:5px;font-size:16px}
-button{width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-size:16px;margin:5px 0}
+button{width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-size:16px;margin:5px 0;cursor:pointer}
 #error{color:red;text-align:center;margin:10px 0}
-#chat{display:none}
-#messages{height:300px;overflow-y:auto;border:1px solid #ddd;padding:10px;margin:10px 0;border-radius:5px}
-.msg{padding:8px;margin:4px;background:#DCF8C6;border-radius:5px;max-width:80%}
-.msg-row{display:flex;margin:4px 0}
+#app{display:none;height:100vh;flex-direction:row}
+#sidebar{width:35%;background:#075E54;padding:10px;overflow-y:auto}
+#sidebar h3{color:white;margin-bottom:10px;font-size:14px}
+.user-item{padding:10px;background:#128C7E;margin:5px 0;border-radius:8px;cursor:pointer;color:white;font-size:14px}
+.user-item:hover{background:#25D366}
+.user-item.active{background:#25D366}
+.online-dot{display:inline-block;width:8px;height:8px;background:#25D366;border-radius:50%;margin-right:5px}
+#chatArea{width:65%;display:flex;flex-direction:column;background:#ECE5DD}
+#chatHeader{background:#075E54;color:white;padding:15px;font-weight:bold}
+#messages{flex:1;overflow-y:auto;padding:10px}
+.msg{padding:8px 12px;margin:4px;border-radius:8px;max-width:75%;font-size:14px}
+.msg.sent{background:#DCF8C6;margin-left:auto}
+.msg.received{background:white}
+.msg b{font-size:12px;color:#075E54}
+#inputArea{display:flex;padding:10px;background:white;gap:5px}
+#inputArea input{flex:1;padding:10px;border:1px solid #ddd;border-radius:20px;font-size:14px}
+#inputArea button{width:auto;padding:10px 20px;border-radius:20px;margin:0}
+#noChat{flex:1;display:flex;align-items:center;justify-content:center;color:#666;font-size:16px}
 </style>
 </head>
 <body>
 <div class="box" id="login">
-<h2>💬 WhatsApp Clone</h2>
-<input id="uname" placeholder="Username">
-<input id="pass" type="password" placeholder="Password">
-<button onclick="signup()">Signup</button>
-<button onclick="login()" style="background:#075E54">Login</button>
-<div id="error"></div>
+  <h2>💬 WhatsApp Clone</h2>
+  <input id="uname" placeholder="Username">
+  <input id="pass" type="password" placeholder="Password">
+  <button onclick="signup()">Signup</button>
+  <button onclick="login()" style="background:#075E54">Login</button>
+  <div id="error"></div>
 </div>
-<div class="box" id="chat">
-<h2>💬 Chat</h2>
-<div id="messages"></div>
-<input id="msg" placeholder="Message likho...">
-<button onclick="sendMsg()">Send</button>
+
+<div id="app">
+  <div id="sidebar">
+    <h3>👥 Users</h3>
+    <div id="userList"></div>
+  </div>
+  <div id="chatArea">
+    <div id="noChat">← Kisi user ko select karo</div>
+    <div id="chatHeader" style="display:none"></div>
+    <div id="messages" style="display:none"></div>
+    <div id="inputArea" style="display:none">
+      <input id="msg" placeholder="Message likho...">
+      <button onclick="sendMsg()">Send</button>
+    </div>
+  </div>
 </div>
+
 <script src="/socket.io/socket.io.js"></script>
 <script>
 var socket = io();
 var token = null;
 var myName = null;
+var currentChat = null;
 
 async function signup(){
   var u = document.getElementById('uname').value;
@@ -52,29 +78,72 @@ async function login(){
   var p = document.getElementById('pass').value;
   var r = await fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
   var d = await r.json();
-  if(d.error) document.getElementById('error').textContent = d.error;
-  else {
-    token = d.token;
-    myName = d.username;
-    document.getElementById('login').style.display = 'none';
-    document.getElementById('chat').style.display = 'block';
-  }
+  if(d.error){ document.getElementById('error').textContent = d.error; return; }
+  token = d.token;
+  myName = d.username;
+  document.getElementById('login').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  socket.emit('join', myName);
+}
+
+function updateUserList(users){
+  var list = document.getElementById('userList');
+  list.innerHTML = '';
+  users.forEach(function(u){
+    if(u === myName) return;
+    var div = document.createElement('div');
+    div.className = 'user-item' + (u === currentChat ? ' active' : '');
+    div.innerHTML = '<span class="online-dot"></span>' + u;
+    div.onclick = function(){ openChat(u); };
+    list.appendChild(div);
+  });
+}
+
+async function openChat(username){
+  currentChat = username;
+  document.getElementById('noChat').style.display = 'none';
+  document.getElementById('chatHeader').style.display = 'block';
+  document.getElementById('messages').style.display = 'block';
+  document.getElementById('inputArea').style.display = 'flex';
+  document.getElementById('chatHeader').textContent = '💬 ' + username;
+  document.getElementById('messages').innerHTML = '';
+  
+  var r = await fetch('/messages/' + myName + '/' + username);
+  var msgs = await r.json();
+  msgs.forEach(function(m){ addMessage(m.from, m.text, m.from === myName); });
+  
+  document.querySelectorAll('.user-item').forEach(function(el){
+    el.classList.remove('active');
+    if(el.textContent.includes(username)) el.classList.add('active');
+  });
+}
+
+function addMessage(from, text, isMine){
+  var div = document.createElement('div');
+  div.className = 'msg ' + (isMine ? 'sent' : 'received');
+  div.innerHTML = (isMine ? '' : '<b>' + from + '</b><br>') + text;
+  document.getElementById('messages').appendChild(div);
+  document.getElementById('messages').scrollTop = 999999;
 }
 
 function sendMsg(){
   var msg = document.getElementById('msg').value;
-  if(msg && token){
-    socket.emit('message',{username:myName,text:msg});
-    document.getElementById('msg').value='';
+  if(msg && currentChat){
+    socket.emit('privateMessage',{from:myName, to:currentChat, text:msg});
+    document.getElementById('msg').value = '';
   }
 }
 
-socket.on('message',function(data){
-  var div = document.createElement('div');
-  div.className = 'msg-row';
-  div.innerHTML = '<div class="msg"><b>'+data.username+':</b> '+data.text+'</div>';
-  document.getElementById('messages').appendChild(div);
-  document.getElementById('messages').scrollTop = 999999;
+document.getElementById('msg').addEventListener('keypress', function(e){
+  if(e.key === 'Enter') sendMsg();
+});
+
+socket.on('onlineUsers', updateUserList);
+
+socket.on('privateMessage', function(data){
+  if(data.from === currentChat || data.to === currentChat){
+    addMessage(data.from, data.text, data.from === myName);
+  }
 });
 </script>
 </body>
