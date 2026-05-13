@@ -47,7 +47,7 @@ input::placeholder{color:#8696a0}
 </div>
 
 <div id="chat-page">
-<div id="header">💬 ChatApp</div>
+<div id="header">💬 ChatApp</div><button onclick="logout()" style="float:right;background:red;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer">Logout</button>
 <div id="users-list"></div>
 </div>
 
@@ -71,6 +71,7 @@ var myEmail = localStorage.getItem('email');
 var myName = localStorage.getItem('name');
 var myToken = localStorage.getItem('token');
 var currentChat = null;
+function logout(){ localStorage.clear(); location.reload(); }
 
 if(myToken){ showChatPage(); }
 

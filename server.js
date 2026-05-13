@@ -32,7 +32,7 @@ app.use(express.json());
 app.use(express.static('public'));
 
 const transporter = nodemailer.createTransport({
-  service: 'gmail',
+  host: "smtp.gmail.com", port: 587, secure: false,
   auth: {
     user: process.env.GMAIL_USER || 'amanalam769196@gmail.com',
     pass: process.env.GMAIL_PASS || 'advmlwrocdtmxbhp'
