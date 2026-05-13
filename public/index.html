@@ -2,147 +2,144 @@
 <html>
 <head>
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>WhatsApp Clone</title>
+<title>ChatApp</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:sans-serif;background:#075E54;height:100vh}
-.box{background:white;max-width:400px;margin:80px auto;padding:30px;border-radius:10px}
-h2{color:#075E54;text-align:center;margin-bottom:20px}
-input{width:100%;padding:12px;margin:8px 0;border:1px solid #ddd;border-radius:5px;font-size:16px}
-button{width:100%;padding:12px;background:#25D366;color:white;border:none;border-radius:5px;font-size:16px;margin:5px 0;cursor:pointer}
+*{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif}
+body{background:#111b21}
+#login-page{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;color:white;padding:20px}
+#login-page h1{color:#25d366;font-size:28px;margin-bottom:30px}
+input{width:100%;padding:12px;margin:8px 0;border:none;border-radius:8px;font-size:16px;background:#2a3942;color:white}
+input::placeholder{color:#8696a0}
+.btn{width:100%;padding:12px;background:#25d366;color:white;border:none;border-radius:8px;font-size:16px;margin:8px 0;cursor:pointer}
 #error{color:red;text-align:center;margin:10px 0}
-#app{display:none;height:100vh;flex-direction:row}
-#sidebar{width:35%;background:#075E54;padding:10px;overflow-y:auto}
-#sidebar h3{color:white;margin-bottom:10px;font-size:14px}
-.user-item{padding:10px;background:#128C7E;margin:5px 0;border-radius:8px;cursor:pointer;color:white;font-size:14px}
-.user-item:hover{background:#25D366}
-.user-item.active{background:#25D366}
-.online-dot{display:inline-block;width:8px;height:8px;background:#25D366;border-radius:50%;margin-right:5px}
-#chatArea{width:65%;display:flex;flex-direction:column;background:#ECE5DD}
-#chatHeader{background:#075E54;color:white;padding:15px;font-weight:bold}
-#messages{flex:1;overflow-y:auto;padding:10px}
-.msg{padding:8px 12px;margin:4px;border-radius:8px;max-width:75%;font-size:14px}
-.msg.sent{background:#DCF8C6;margin-left:auto}
-.msg.received{background:white}
-.msg b{font-size:12px;color:#075E54}
-#inputArea{display:flex;padding:10px;background:white;gap:5px}
-#inputArea input{flex:1;padding:10px;border:1px solid #ddd;border-radius:20px;font-size:14px}
-#inputArea button{width:auto;padding:10px 20px;border-radius:20px;margin:0}
-#noChat{flex:1;display:flex;align-items:center;justify-content:center;color:#666;font-size:16px}
+#success{color:#25d366;text-align:center;margin:10px 0}
+#chat-page{display:none;height:100vh;flex-direction:column}
+#header{background:#1f2c34;padding:15px;color:white;font-size:18px;font-weight:bold}
+#users-list{background:#111b21;overflow-y:auto;flex:1}
+.user-item{padding:15px;border-bottom:1px solid #2a3942;color:white;cursor:pointer;display:flex;align-items:center}
+.user-item:hover{background:#2a3942}
+.user-avatar{width:45px;height:45px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:15px}
+#chat-window{display:none;height:100vh;flex-direction:column}
+#chat-header{background:#1f2c34;padding:15px;color:white;display:flex;align-items:center}
+#back-btn{margin-right:15px;cursor:pointer;font-size:20px}
+#messages{flex:1;overflow-y:auto;padding:10px;background:#0b141a}
+.msg{max-width:70%;padding:8px 12px;margin:4px;border-radius:8px;color:white;font-size:14px}
+.msg-sent{background:#005c4b;margin-left:auto}
+.msg-received{background:#1f2c34}
+#input-area{background:#1f2c34;padding:10px;display:flex;gap:10px}
+#msg-input{flex:1;padding:10px;border:none;border-radius:20px;background:#2a3942;color:white;font-size:16px}
+#send-btn{background:#25d366;border:none;border-radius:50%;width:45px;height:45px;color:white;font-size:20px;cursor:pointer}
 </style>
 </head>
 <body>
-<div class="box" id="login">
-  <h2>💬 WhatsApp Clone</h2>
-  <input id="uname" placeholder="Username">
-  <input id="pass" type="password" placeholder="Password">
-  <button onclick="signup()">Signup</button>
-  <button onclick="login()" style="background:#075E54">Login</button>
-  <div id="error"></div>
+<div id="login-page">
+<h1>💬 ChatApp</h1>
+<input id="name-input" placeholder="Apna naam likho">
+<input id="email-input" placeholder="Email likho" type="email">
+<button class="btn" onclick="sendOTP()">OTP Bhejo</button>
+<input id="otp-input" placeholder="OTP likho" style="display:none">
+<button class="btn" id="verify-btn" onclick="verifyOTP()" style="display:none">Verify Karo</button>
+<div id="error"></div>
+<div id="success"></div>
 </div>
 
-<div id="app">
-  <div id="sidebar">
-    <h3>👥 Users</h3>
-    <div id="userList"></div>
-  </div>
-  <div id="chatArea">
-    <div id="noChat">← Kisi user ko select karo</div>
-    <div id="chatHeader" style="display:none"></div>
-    <div id="messages" style="display:none"></div>
-    <div id="inputArea" style="display:none">
-      <input id="msg" placeholder="Message likho...">
-      <button onclick="sendMsg()">Send</button>
-    </div>
-  </div>
+<div id="chat-page">
+<div id="header">💬 ChatApp</div>
+<div id="users-list"></div>
+</div>
+
+<div id="chat-window">
+<div id="chat-header">
+<span id="back-btn" onclick="goBack()">←</span>
+<div class="user-avatar" id="chat-avatar">👤</div>
+<span id="chat-name"></span>
+</div>
+<div id="messages"></div>
+<div id="input-area">
+<input id="msg-input" placeholder="Message likho...">
+<button id="send-btn" onclick="sendMessage()">➤</button>
+</div>
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
 <script>
 var socket = io();
-var token = null;
-var myName = null;
+var myEmail = localStorage.getItem('email');
+var myName = localStorage.getItem('name');
+var myToken = localStorage.getItem('token');
 var currentChat = null;
 
-async function signup(){
-  var u = document.getElementById('uname').value;
-  var p = document.getElementById('pass').value;
-  var r = await fetch('/signup',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
-  var d = await r.json();
-  if(d.error) document.getElementById('error').textContent = d.error;
-  else document.getElementById('error').textContent = 'Account ban gaya! Ab login karo!';
-}
+if(myToken) showChatPage();
 
-async function login(){
-  var u = document.getElementById('uname').value;
-  var p = document.getElementById('pass').value;
-  var r = await fetch('/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username:u,password:p})});
+async function sendOTP(){
+  var name = document.getElementById('name-input').value;
+  var email = document.getElementById('email-input').value;
+  if(!name || !email){ document.getElementById('error').textContent = 'Naam aur email daalo!'; return; }
+  var r = await fetch('/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,name})});
   var d = await r.json();
   if(d.error){ document.getElementById('error').textContent = d.error; return; }
-  token = d.token;
-  myName = d.username;
-  document.getElementById('login').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  socket.emit('join', myName);
+  document.getElementById('success').textContent = 'OTP bhej diya! Email check karo!';
+  document.getElementById('otp-input').style.display = 'block';
+  document.getElementById('verify-btn').style.display = 'block';
 }
 
-function updateUserList(users){
-  var list = document.getElementById('userList');
-  list.innerHTML = '';
-  users.forEach(function(u){
-    if(u === myName) return;
-    var div = document.createElement('div');
-    div.className = 'user-item' + (u === currentChat ? ' active' : '');
-    div.innerHTML = '<span class="online-dot"></span>' + u;
-    div.onclick = function(){ openChat(u); };
-    list.appendChild(div);
+async function verifyOTP(){
+  var email = document.getElementById('email-input').value;
+  var otp = document.getElementById('otp-input').value;
+  var r = await fetch('/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,otp})});
+  var d = await r.json();
+  if(d.error){ document.getElementById('error').textContent = d.error; return; }
+  localStorage.setItem('token', d.token);
+  localStorage.setItem('email', d.email);
+  localStorage.setItem('name', d.name);
+  myEmail = d.email; myName = d.name; myToken = d.token;
+  showChatPage();
+}
+
+async function showChatPage(){
+  document.getElementById('login-page').style.display = 'none';
+  document.getElementById('chat-page').style.display = 'flex';
+  var r = await fetch('/users');
+  var users = await r.json();
+  var html = '';
+  users.forEach(u => {
+    if(u.email !== myEmail){
+      html += '<div class="user-item" onclick="openChat(\''+u.email+'\',\''+u.name+'\')">';
+      html += '<div class="user-avatar">'+u.name[0].toUpperCase()+'</div>';
+      html += '<div><b>'+u.name+'</b><br><small>'+u.email+'</small></div></div>';
+    }
   });
+  document.getElementById('users-list').innerHTML = html || '<p style="color:white;padding:20px">Koi user nahi mila!</p>';
 }
 
-async function openChat(username){
-  currentChat = username;
-  document.getElementById('noChat').style.display = 'none';
-  document.getElementById('chatHeader').style.display = 'block';
-  document.getElementById('messages').style.display = 'block';
-  document.getElementById('inputArea').style.display = 'flex';
-  document.getElementById('chatHeader').textContent = '💬 ' + username;
+function openChat(email, name){
+  currentChat = {email, name};
+  document.getElementById('chat-page').style.display = 'none';
+  document.getElementById('chat-window').style.display = 'flex';
+  document.getElementById('chat-name').textContent = name;
+  document.getElementById('chat-avatar').textContent = name[0].toUpperCase();
   document.getElementById('messages').innerHTML = '';
-  
-  var r = await fetch('/messages/' + myName + '/' + username);
-  var msgs = await r.json();
-  msgs.forEach(function(m){ addMessage(m.from, m.text, m.from === myName); });
-  
-  document.querySelectorAll('.user-item').forEach(function(el){
-    el.classList.remove('active');
-    if(el.textContent.includes(username)) el.classList.add('active');
-  });
 }
 
-function addMessage(from, text, isMine){
-  var div = document.createElement('div');
-  div.className = 'msg ' + (isMine ? 'sent' : 'received');
-  div.innerHTML = (isMine ? '' : '<b>' + from + '</b><br>') + text;
-  document.getElementById('messages').appendChild(div);
-  document.getElementById('messages').scrollTop = 999999;
+function goBack(){
+  document.getElementById('chat-window').style.display = 'none';
+  document.getElementById('chat-page').style.display = 'flex';
 }
 
-function sendMsg(){
-  var msg = document.getElementById('msg').value;
-  if(msg && currentChat){
-    socket.emit('privateMessage',{from:myName, to:currentChat, text:msg});
-    document.getElementById('msg').value = '';
-  }
+function sendMessage(){
+  var text = document.getElementById('msg-input').value;
+  if(!text || !currentChat) return;
+  socket.emit('private-message', {from: myEmail, fromName: myName, to: currentChat.email, text});
+  document.getElementById('msg-input').value = '';
 }
 
-document.getElementById('msg').addEventListener('keypress', function(e){
-  if(e.key === 'Enter') sendMsg();
-});
-
-socket.on('onlineUsers', updateUserList);
-
-socket.on('privateMessage', function(data){
-  if(data.from === currentChat || data.to === currentChat){
-    addMessage(data.from, data.text, data.from === myName);
+socket.on('private-message', function(data){
+  if(currentChat && (data.from === currentChat.email || data.to === currentChat.email)){
+    var div = document.createElement('div');
+    div.className = 'msg ' + (data.from === myEmail ? 'msg-sent' : 'msg-received');
+    div.textContent = data.text;
+    document.getElementById('messages').appendChild(div);
+    document.getElementById('messages').scrollTop = 999999;
   }
 });
 </script>
