@@ -11,14 +11,15 @@ body{background:#111b21}
 input{width:100%;padding:12px;margin:8px 0;border:none;border-radius:8px;font-size:16px;background:#2a3942;color:white}
 input::placeholder{color:#8696a0}
 .btn{width:100%;padding:12px;background:#25d366;color:white;border:none;border-radius:8px;font-size:16px;margin:8px 0;cursor:pointer}
-#error{color:red;text-align:center;margin:10px 0}
-#success{color:#25d366;text-align:center;margin:10px 0}
+#error{color:red;text-align:center;margin:10px 0;font-size:14px}
+#success{color:#25d366;text-align:center;margin:10px 0;font-size:14px}
+#otp-section{display:none;width:100%}
 #chat-page{display:none;height:100vh;flex-direction:column}
 #header{background:#1f2c34;padding:15px;color:white;font-size:18px;font-weight:bold}
 #users-list{background:#111b21;overflow-y:auto;flex:1}
 .user-item{padding:15px;border-bottom:1px solid #2a3942;color:white;cursor:pointer;display:flex;align-items:center}
 .user-item:hover{background:#2a3942}
-.user-avatar{width:45px;height:45px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:15px}
+.user-avatar{width:45px;height:45px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:15px;color:white;font-weight:bold}
 #chat-window{display:none;height:100vh;flex-direction:column}
 #chat-header{background:#1f2c34;padding:15px;color:white;display:flex;align-items:center}
 #back-btn{margin-right:15px;cursor:pointer;font-size:20px}
@@ -37,8 +38,10 @@ input::placeholder{color:#8696a0}
 <input id="name-input" placeholder="Apna naam likho">
 <input id="email-input" placeholder="Email likho" type="email">
 <button class="btn" onclick="sendOTP()">OTP Bhejo</button>
-<input id="otp-input" placeholder="OTP likho" style="display:none">
-<button class="btn" id="verify-btn" onclick="verifyOTP()" style="display:none">Verify Karo</button>
+<div id="otp-section">
+<input id="otp-input" placeholder="6 digit OTP likho" type="number">
+<button class="btn" onclick="verifyOTP()">Verify Karo</button>
+</div>
 <div id="error"></div>
 <div id="success"></div>
 </div>
@@ -52,7 +55,7 @@ input::placeholder{color:#8696a0}
 <div id="chat-header">
 <span id="back-btn" onclick="goBack()">←</span>
 <div class="user-avatar" id="chat-avatar">👤</div>
-<span id="chat-name"></span>
+<span id="chat-name" style="margin-left:10px"></span>
 </div>
 <div id="messages"></div>
 <div id="input-area">
@@ -69,47 +72,86 @@ var myName = localStorage.getItem('name');
 var myToken = localStorage.getItem('token');
 var currentChat = null;
 
-if(myToken) showChatPage();
+if(myToken){ showChatPage(); }
 
 async function sendOTP(){
-  var name = document.getElementById('name-input').value;
-  var email = document.getElementById('email-input').value;
-  if(!name || !email){ document.getElementById('error').textContent = 'Naam aur email daalo!'; return; }
-  var r = await fetch('/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,name})});
-  var d = await r.json();
-  if(d.error){ document.getElementById('error').textContent = d.error; return; }
-  document.getElementById('success').textContent = 'OTP bhej diya! Email check karo!';
-  document.getElementById('otp-input').style.display = 'block';
-  document.getElementById('verify-btn').style.display = 'block';
+  var name = document.getElementById('name-input').value.trim();
+  var email = document.getElementById('email-input').value.trim();
+  document.getElementById('error').textContent = '';
+  document.getElementById('success').textContent = '';
+  if(!name || !email){
+    document.getElementById('error').textContent = 'Naam aur email daalo!';
+    return;
+  }
+  try {
+    document.getElementById('success').textContent = 'Bhej rahe hain...';
+    var r = await fetch('/send-otp',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email,name})
+    });
+    var d = await r.json();
+    if(d.error){
+      document.getElementById('error').textContent = d.error;
+      document.getElementById('success').textContent = '';
+    } else {
+      document.getElementById('success').textContent = 'OTP bhej diya! Email aur Spam check karo!';
+      document.getElementById('otp-section').style.display = 'block';
+    }
+  } catch(e) {
+    document.getElementById('error').textContent = 'Network error: ' + e.message;
+  }
 }
 
 async function verifyOTP(){
-  var email = document.getElementById('email-input').value;
-  var otp = document.getElementById('otp-input').value;
-  var r = await fetch('/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,otp})});
-  var d = await r.json();
-  if(d.error){ document.getElementById('error').textContent = d.error; return; }
-  localStorage.setItem('token', d.token);
-  localStorage.setItem('email', d.email);
-  localStorage.setItem('name', d.name);
-  myEmail = d.email; myName = d.name; myToken = d.token;
-  showChatPage();
+  var email = document.getElementById('email-input').value.trim();
+  var otp = document.getElementById('otp-input').value.trim();
+  document.getElementById('error').textContent = '';
+  try {
+    var r = await fetch('/verify-otp',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({email,otp})
+    });
+    var d = await r.json();
+    if(d.error){
+      document.getElementById('error').textContent = d.error;
+    } else {
+      localStorage.setItem('token', d.token);
+      localStorage.setItem('email', d.email);
+      localStorage.setItem('name', d.name);
+      myEmail = d.email;
+      myName = d.name;
+      myToken = d.token;
+      showChatPage();
+    }
+  } catch(e) {
+    document.getElementById('error').textContent = 'Network error: ' + e.message;
+  }
 }
 
 async function showChatPage(){
   document.getElementById('login-page').style.display = 'none';
   document.getElementById('chat-page').style.display = 'flex';
-  var r = await fetch('/users');
-  var users = await r.json();
-  var html = '';
-  users.forEach(u => {
-    if(u.email !== myEmail){
-      html += '<div class="user-item" onclick="openChat(\''+u.email+'\',\''+u.name+'\')">';
-      html += '<div class="user-avatar">'+u.name[0].toUpperCase()+'</div>';
-      html += '<div><b>'+u.name+'</b><br><small>'+u.email+'</small></div></div>';
-    }
-  });
-  document.getElementById('users-list').innerHTML = html || '<p style="color:white;padding:20px">Koi user nahi mila!</p>';
+  loadUsers();
+}
+
+async function loadUsers(){
+  try {
+    var r = await fetch('/users');
+    var users = await r.json();
+    var html = '';
+    users.forEach(u => {
+      if(u.email !== myEmail){
+        html += '<div class="user-item" onclick="openChat(\''+u.email+'\',\''+u.name+'\')">';
+        html += '<div class="user-avatar">'+u.name[0].toUpperCase()+'</div>';
+        html += '<div><b>'+u.name+'</b><br><small style="color:#8696a0">'+u.email+'</small></div></div>';
+      }
+    });
+    document.getElementById('users-list').innerHTML = html || '<p style="color:#8696a0;padding:20px;text-align:center">Koi user nahi mila!</p>';
+  } catch(e) {
+    console.log('Users load error:', e);
+  }
 }
 
 function openChat(email, name){
@@ -124,12 +166,18 @@ function openChat(email, name){
 function goBack(){
   document.getElementById('chat-window').style.display = 'none';
   document.getElementById('chat-page').style.display = 'flex';
+  loadUsers();
 }
 
 function sendMessage(){
-  var text = document.getElementById('msg-input').value;
+  var text = document.getElementById('msg-input').value.trim();
   if(!text || !currentChat) return;
-  socket.emit('private-message', {from: myEmail, fromName: myName, to: currentChat.email, text});
+  socket.emit('private-message', {
+    from: myEmail,
+    fromName: myName,
+    to: currentChat.email,
+    text: text
+  });
   document.getElementById('msg-input').value = '';
 }
 
@@ -137,7 +185,7 @@ socket.on('private-message', function(data){
   if(currentChat && (data.from === currentChat.email || data.to === currentChat.email)){
     var div = document.createElement('div');
     div.className = 'msg ' + (data.from === myEmail ? 'msg-sent' : 'msg-received');
-    div.textContent = data.text;
+    div.textContent = (data.from !== myEmail ? data.fromName + ': ' : '') + data.text;
     document.getElementById('messages').appendChild(div);
     document.getElementById('messages').scrollTop = 999999;
   }
