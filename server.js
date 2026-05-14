@@ -32,7 +32,10 @@ app.use(express.json());
 app.use(express.static('public'));
 
 const transporter = nodemailer.createTransport({
-  host: "smtp.gmail.com", port: 587, secure: false,
+  host: 'smtp.gmail.com',
+  port: 465,
+  secure: true,
+  family: 4,
   auth: {
     user: process.env.GMAIL_USER || 'amanalam769196@gmail.com',
     pass: process.env.GMAIL_PASS || 'advmlwrocdtmxbhp'
@@ -57,6 +60,7 @@ app.post('/send-otp', async (req, res) => {
     });
     res.json({ success: true });
   } catch(err) {
+    console.log('OTP Error:', err.message);
     res.json({ error: err.message });
   }
 });
