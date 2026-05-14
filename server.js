@@ -3,8 +3,10 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const mongoose = require('mongoose');
-const nodemailer = require('nodemailer');
+const sgMail = require('@sendgrid/mail');
 const jwt = require('jsonwebtoken');
+
+sgMail.setApiKey(process.env.SENDGRID_KEY || 'SG.WT1A51TMZKRHKBZ9MNP8EUS6');
 
 mongoose.connect(process.env.MONGO_URL || 'mongodb+srv://amanalam:aman8070@cluster0.an4ayhj.mongodb.net/whatsapp?appName=Cluster0')
 .then(() => console.log('MongoDB connected!'))
@@ -31,17 +33,6 @@ const SECRET = 'whatsapp-secret-key';
 app.use(express.json());
 app.use(express.static('public'));
 
-const transporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 465,
-  secure: true,
-  family: 4,
-  auth: {
-    user: process.env.GMAIL_USER || 'amanalam769196@gmail.com',
-    pass: process.env.GMAIL_PASS || 'advmlwrocdtmxbhp'
-  }
-});
-
 app.post('/send-otp', async (req, res) => {
   try {
     const { email, name } = req.body;
@@ -52,12 +43,13 @@ app.post('/send-otp', async (req, res) => {
     user.otp = otp;
     user.otpExpiry = otpExpiry;
     await user.save();
-    await transporter.sendMail({
-      from: process.env.GMAIL_USER || 'amanalam769196@gmail.com',
+    await sgMail.send({
       to: email,
+      from: 'amanalam769196@gmail.com',
       subject: 'Your OTP Code',
       text: `Your OTP is: ${otp} (valid for 10 minutes)`
     });
+    console.log('OTP sent to:', email);
     res.json({ success: true });
   } catch(err) {
     console.log('OTP Error:', err.message);
