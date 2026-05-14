@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const nodemailer = require('nodemailer');
 const jwt = require('jsonwebtoken');
 
-mongoose.connect(process.env.MONGODB_URI || 'mongodb+srv://amanalam:aman8070@cluster0.an4ayhj.mongodb.net/whatsapp?appName=Cluster0')
+mongoose.connect(process.env.MONGO_URL || 'mongodb+srv://amanalam:aman8070@cluster0.an4ayhj.mongodb.net/whatsapp?appName=Cluster0')
 .then(() => console.log('MongoDB connected!'))
 .catch(err => console.log(err));
 
