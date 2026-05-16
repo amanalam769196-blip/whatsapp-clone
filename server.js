@@ -3,10 +3,10 @@ const app = express();
 const http = require('http').createServer(app);
 const io = require('socket.io')(http);
 const mongoose = require('mongoose');
-const sgMail = require('@sendgrid/mail');
+const { Resend } = require('resend');
 const jwt = require('jsonwebtoken');
 
-sgMail.setApiKey(process.env.SENDGRID_KEY || 'SG.WT1A51TMZKRHKBZ9MNP8EUS6');
+const resend = new Resend(process.env.RESEND_KEY || 're_DvzfQTsY_MWv4SpUS5Jh9kWQHbreM6kMQ');
 
 mongoose.connect(process.env.MONGO_URL || 'mongodb+srv://amanalam:aman8070@cluster0.an4ayhj.mongodb.net/whatsapp?appName=Cluster0')
 .then(() => console.log('MongoDB connected!'))
@@ -43,12 +43,16 @@ app.post('/send-otp', async (req, res) => {
     user.otp = otp;
     user.otpExpiry = otpExpiry;
     await user.save();
-    await sgMail.send({
+    const { data, error } = await resend.emails.send({
+      from: 'onboarding@resend.dev',
       to: email,
-      from: 'amanalam769196@gmail.com',
-      subject: 'Your OTP Code',
-      text: `Your OTP is: ${otp} (valid for 10 minutes)`
+      subject: 'Your OTP Code - ChatApp',
+      html: `<h2>Your OTP Code</h2><p>Your OTP is: <b>${otp}</b></p><p>Valid for 10 minutes.</p>`
     });
+    if (error) {
+      console.log('OTP Error:', error);
+      return res.json({ error: error.message });
+    }
     console.log('OTP sent to:', email);
     res.json({ success: true });
   } catch(err) {
