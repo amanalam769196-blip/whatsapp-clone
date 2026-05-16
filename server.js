@@ -16,14 +16,16 @@ const userSchema = new mongoose.Schema({
   email: { type: String, unique: true },
   name: String,
   otp: String,
-  otpExpiry: Date
+  otpExpiry: Date,
+  online: { type: Boolean, default: false }
 });
 
 const messageSchema = new mongoose.Schema({
   from: String,
   to: String,
   text: String,
-  time: { type: Date, default: Date.now }
+  time: { type: Date, default: Date.now },
+  read: { type: Boolean, default: false }
 });
 
 const User = mongoose.model('User', userSchema);
@@ -43,20 +45,16 @@ app.post('/send-otp', async (req, res) => {
     user.otp = otp;
     user.otpExpiry = otpExpiry;
     await user.save();
-    const { data, error } = await resend.emails.send({
+    const { error } = await resend.emails.send({
       from: 'onboarding@resend.dev',
       to: email,
       subject: 'Your OTP Code - ChatApp',
       html: `<h2>Your OTP Code</h2><p>Your OTP is: <b>${otp}</b></p><p>Valid for 10 minutes.</p>`
     });
-    if (error) {
-      console.log('OTP Error:', error);
-      return res.json({ error: error.message });
-    }
+    if (error) return res.json({ error: error.message });
     console.log('OTP sent to:', email);
     res.json({ success: true });
   } catch(err) {
-    console.log('OTP Error:', err.message);
     res.json({ error: err.message });
   }
 });
@@ -78,15 +76,41 @@ app.post('/verify-otp', async (req, res) => {
 });
 
 app.get('/users', async (req, res) => {
-  const users = await User.find({}, 'email name');
+  const users = await User.find({}, 'email name online');
   res.json(users);
 });
 
+app.get('/messages/:from/:to', async (req, res) => {
+  const { from, to } = req.params;
+  const messages = await Message.find({
+    $or: [
+      { from, to },
+      { from: to, to: from }
+    ]
+  }).sort({ time: 1 });
+  res.json(messages);
+});
+
 io.on('connection', (socket) => {
+  socket.on('join', async (email) => {
+    socket.email = email;
+    socket.join(email);
+    await User.findOneAndUpdate({ email }, { online: true });
+    io.emit('user-status', { email, online: true });
+  });
+
   socket.on('private-message', async (data) => {
     const msg = new Message(data);
     await msg.save();
-    io.emit('private-message', data);
+    io.to(data.to).emit('private-message', data);
+    io.to(data.from).emit('private-message', data);
+  });
+
+  socket.on('disconnect', async () => {
+    if (socket.email) {
+      await User.findOneAndUpdate({ email: socket.email }, { online: false });
+      io.emit('user-status', { email: socket.email, online: false });
+    }
   });
 });
 

@@ -15,21 +15,25 @@ input::placeholder{color:#8696a0}
 #success{color:#25d366;text-align:center;margin:10px 0;font-size:14px}
 #otp-section{display:none;width:100%}
 #chat-page{display:none;height:100vh;flex-direction:column}
-#header{background:#1f2c34;padding:15px;color:white;font-size:18px;font-weight:bold}
+#header{background:#1f2c34;padding:15px;color:white;font-size:18px;font-weight:bold;display:flex;justify-content:space-between;align-items:center}
 #users-list{background:#111b21;overflow-y:auto;flex:1}
 .user-item{padding:15px;border-bottom:1px solid #2a3942;color:white;cursor:pointer;display:flex;align-items:center}
 .user-item:hover{background:#2a3942}
-.user-avatar{width:45px;height:45px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:15px;color:white;font-weight:bold}
+.user-avatar{width:45px;height:45px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:15px;color:white;font-weight:bold;position:relative}
+.online-dot{width:12px;height:12px;background:#25d366;border-radius:50%;position:absolute;bottom:0;right:0;border:2px solid #111b21}
+.offline-dot{width:12px;height:12px;background:#8696a0;border-radius:50%;position:absolute;bottom:0;right:0;border:2px solid #111b21}
 #chat-window{display:none;height:100vh;flex-direction:column}
 #chat-header{background:#1f2c34;padding:15px;color:white;display:flex;align-items:center}
 #back-btn{margin-right:15px;cursor:pointer;font-size:20px}
 #messages{flex:1;overflow-y:auto;padding:10px;background:#0b141a}
-.msg{max-width:70%;padding:8px 12px;margin:4px;border-radius:8px;color:white;font-size:14px}
-.msg-sent{background:#005c4b;margin-left:auto}
-.msg-received{background:#1f2c34}
+.msg{max-width:70%;padding:8px 12px;margin:4px;border-radius:8px;color:white;font-size:14px;word-break:break-word}
+.msg-sent{background:#005c4b;margin-left:auto;border-radius:8px 0 8px 8px}
+.msg-received{background:#1f2c34;border-radius:0 8px 8px 8px}
+.msg-time{font-size:10px;color:#8696a0;text-align:right;margin-top:3px}
 #input-area{background:#1f2c34;padding:10px;display:flex;gap:10px}
 #msg-input{flex:1;padding:10px;border:none;border-radius:20px;background:#2a3942;color:white;font-size:16px}
 #send-btn{background:#25d366;border:none;border-radius:50%;width:45px;height:45px;color:white;font-size:20px;cursor:pointer}
+.logout-btn{background:transparent;border:1px solid #ef4444;color:#ef4444;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px}
 </style>
 </head>
 <body>
@@ -47,7 +51,10 @@ input::placeholder{color:#8696a0}
 </div>
 
 <div id="chat-page">
-<div id="header">💬 ChatApp</div><button onclick="logout()" style="float:right;background:red;color:white;border:none;padding:5px 10px;border-radius:5px;cursor:pointer">Logout</button>
+<div id="header">
+<span>💬 ChatApp</span>
+<button class="logout-btn" onclick="logout()">Logout</button>
+</div>
 <div id="users-list"></div>
 </div>
 
@@ -55,11 +62,14 @@ input::placeholder{color:#8696a0}
 <div id="chat-header">
 <span id="back-btn" onclick="goBack()">←</span>
 <div class="user-avatar" id="chat-avatar">👤</div>
-<span id="chat-name" style="margin-left:10px"></span>
+<div style="margin-left:10px">
+<div id="chat-name"></div>
+<div id="chat-status" style="font-size:12px;color:#25d366"></div>
+</div>
 </div>
 <div id="messages"></div>
 <div id="input-area">
-<input id="msg-input" placeholder="Message likho...">
+<input id="msg-input" placeholder="Message likho..." onkeypress="if(event.key==='Enter')sendMessage()">
 <button id="send-btn" onclick="sendMessage()">➤</button>
 </div>
 </div>
@@ -71,7 +81,6 @@ var myEmail = localStorage.getItem('email');
 var myName = localStorage.getItem('name');
 var myToken = localStorage.getItem('token');
 var currentChat = null;
-function logout(){ localStorage.clear(); location.reload(); }
 
 if(myToken){ showChatPage(); }
 
@@ -80,60 +89,35 @@ async function sendOTP(){
   var email = document.getElementById('email-input').value.trim();
   document.getElementById('error').textContent = '';
   document.getElementById('success').textContent = '';
-  if(!name || !email){
-    document.getElementById('error').textContent = 'Naam aur email daalo!';
-    return;
-  }
+  if(!name || !email){ document.getElementById('error').textContent = 'Naam aur email daalo!'; return; }
   try {
     document.getElementById('success').textContent = 'Bhej rahe hain...';
-    var r = await fetch('/send-otp',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email,name})
-    });
+    var r = await fetch('/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,name})});
     var d = await r.json();
-    if(d.error){
-      document.getElementById('error').textContent = d.error;
-      document.getElementById('success').textContent = '';
-    } else {
-      document.getElementById('success').textContent = 'OTP bhej diya! Email aur Spam check karo!';
-      document.getElementById('otp-section').style.display = 'block';
-    }
-  } catch(e) {
-    document.getElementById('error').textContent = 'Network error: ' + e.message;
-  }
+    if(d.error){ document.getElementById('error').textContent = d.error; document.getElementById('success').textContent = ''; }
+    else { document.getElementById('success').textContent = 'OTP bhej diya! Email check karo!'; document.getElementById('otp-section').style.display='block'; }
+  } catch(e) { document.getElementById('error').textContent = 'Network error!'; }
 }
 
 async function verifyOTP(){
   var email = document.getElementById('email-input').value.trim();
   var otp = document.getElementById('otp-input').value.trim();
-  document.getElementById('error').textContent = '';
   try {
-    var r = await fetch('/verify-otp',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({email,otp})
-    });
+    var r = await fetch('/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,otp})});
     var d = await r.json();
-    if(d.error){
-      document.getElementById('error').textContent = d.error;
-    } else {
-      localStorage.setItem('token', d.token);
-      localStorage.setItem('email', d.email);
-      localStorage.setItem('name', d.name);
-      myEmail = d.email;
-      myName = d.name;
-      myToken = d.token;
+    if(d.error){ document.getElementById('error').textContent = d.error; }
+    else {
+      localStorage.setItem('token',d.token); localStorage.setItem('email',d.email); localStorage.setItem('name',d.name);
+      myEmail=d.email; myName=d.name; myToken=d.token;
       showChatPage();
     }
-  } catch(e) {
-    document.getElementById('error').textContent = 'Network error: ' + e.message;
-  }
+  } catch(e) { document.getElementById('error').textContent = 'Network error!'; }
 }
 
 async function showChatPage(){
-  document.getElementById('login-page').style.display = 'none';
-  document.getElementById('chat-page').style.display = 'flex';
+  document.getElementById('login-page').style.display='none';
+  document.getElementById('chat-page').style.display='flex';
+  socket.emit('join', myEmail);
   loadUsers();
 }
 
@@ -145,52 +129,63 @@ async function loadUsers(){
     users.forEach(u => {
       if(u.email !== myEmail){
         html += '<div class="user-item" onclick="openChat(\''+u.email+'\',\''+u.name+'\')">';
-        html += '<div class="user-avatar">'+u.name[0].toUpperCase()+'</div>';
-        html += '<div><b>'+u.name+'</b><br><small style="color:#8696a0">'+u.email+'</small></div></div>';
+        html += '<div class="user-avatar">'+u.name[0].toUpperCase();
+        html += '<div class="'+(u.online?'online-dot':'offline-dot')+'"></div></div>';
+        html += '<div><b>'+u.name+'</b><br><small style="color:#8696a0">'+(u.online?'Online':'Offline')+'</small></div></div>';
       }
     });
     document.getElementById('users-list').innerHTML = html || '<p style="color:#8696a0;padding:20px;text-align:center">Koi user nahi mila!</p>';
-  } catch(e) {
-    console.log('Users load error:', e);
-  }
+  } catch(e) { console.log(e); }
 }
 
-function openChat(email, name){
+async function openChat(email, name){
   currentChat = {email, name};
-  document.getElementById('chat-page').style.display = 'none';
-  document.getElementById('chat-window').style.display = 'flex';
+  document.getElementById('chat-page').style.display='none';
+  document.getElementById('chat-window').style.display='flex';
   document.getElementById('chat-name').textContent = name;
   document.getElementById('chat-avatar').textContent = name[0].toUpperCase();
   document.getElementById('messages').innerHTML = '';
+  try {
+    var r = await fetch('/messages/'+myEmail+'/'+email);
+    var msgs = await r.json();
+    msgs.forEach(m => addMessage(m));
+  } catch(e) { console.log(e); }
 }
 
 function goBack(){
-  document.getElementById('chat-window').style.display = 'none';
-  document.getElementById('chat-page').style.display = 'flex';
+  document.getElementById('chat-window').style.display='none';
+  document.getElementById('chat-page').style.display='flex';
+  currentChat = null;
   loadUsers();
+}
+
+function addMessage(data){
+  var div = document.createElement('div');
+  div.className = 'msg '+(data.from===myEmail?'msg-sent':'msg-received');
+  var time = new Date(data.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  div.innerHTML = data.text+'<div class="msg-time">'+time+'</div>';
+  document.getElementById('messages').appendChild(div);
+  document.getElementById('messages').scrollTop = 999999;
 }
 
 function sendMessage(){
   var text = document.getElementById('msg-input').value.trim();
   if(!text || !currentChat) return;
-  socket.emit('private-message', {
-    from: myEmail,
-    fromName: myName,
-    to: currentChat.email,
-    text: text
-  });
-  document.getElementById('msg-input').value = '';
+  socket.emit('private-message',{from:myEmail, fromName:myName, to:currentChat.email, text, time:new Date()});
+  document.getElementById('msg-input').value='';
 }
 
 socket.on('private-message', function(data){
-  if(currentChat && (data.from === currentChat.email || data.to === currentChat.email)){
-    var div = document.createElement('div');
-    div.className = 'msg ' + (data.from === myEmail ? 'msg-sent' : 'msg-received');
-    div.textContent = (data.from !== myEmail ? data.fromName + ': ' : '') + data.text;
-    document.getElementById('messages').appendChild(div);
-    document.getElementById('messages').scrollTop = 999999;
+  if(currentChat && (data.from===currentChat.email || data.to===currentChat.email)){
+    addMessage(data);
   }
 });
+
+socket.on('user-status', function(data){
+  loadUsers();
+});
+
+function logout(){ localStorage.clear(); location.reload(); }
 </script>
 </body>
 </html>
