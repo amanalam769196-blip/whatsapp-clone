@@ -25,6 +25,7 @@ const messageSchema = new mongoose.Schema({
   to: String,
   text: String,
   time: { type: Date, default: Date.now },
+  delivered: { type: Boolean, default: false },
   read: { type: Boolean, default: false }
 });
 
@@ -83,12 +84,15 @@ app.get('/users', async (req, res) => {
 app.get('/messages/:from/:to', async (req, res) => {
   const { from, to } = req.params;
   const messages = await Message.find({
-    $or: [
-      { from, to },
-      { from: to, to: from }
-    ]
+    $or: [{ from, to }, { from: to, to: from }]
   }).sort({ time: 1 });
   res.json(messages);
+});
+
+app.post('/read-messages', async (req, res) => {
+  const { from, to } = req.body;
+  await Message.updateMany({ from, to, read: false }, { read: true });
+  res.json({ success: true });
 });
 
 io.on('connection', (socket) => {
@@ -100,10 +104,15 @@ io.on('connection', (socket) => {
   });
 
   socket.on('private-message', async (data) => {
-    const msg = new Message(data);
+    const msg = new Message({ ...data, delivered: true });
     await msg.save();
-    io.to(data.to).emit('private-message', data);
-    io.to(data.from).emit('private-message', data);
+    io.to(data.to).emit('private-message', { ...data, delivered: true, read: false });
+    io.to(data.from).emit('private-message', { ...data, delivered: true, read: false });
+  });
+
+  socket.on('message-read', async (data) => {
+    await Message.updateMany({ from: data.from, to: data.to, read: false }, { read: true });
+    io.to(data.from).emit('message-read', data);
   });
 
   socket.on('disconnect', async () => {
