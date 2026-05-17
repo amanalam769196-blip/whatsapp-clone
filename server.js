@@ -135,6 +135,26 @@ io.on('connection', (socket) => {
     io.to(data.from).emit('private-message', { ...data, delivered: true, read: false });
   });
 
+  socket.on('call-offer', (data) => {
+    io.to(data.to).emit('call-offer', data);
+  });
+
+  socket.on('call-answer', (data) => {
+    io.to(data.to).emit('call-answer', data);
+  });
+
+  socket.on('ice-candidate', (data) => {
+    io.to(data.to).emit('ice-candidate', data);
+  });
+
+  socket.on('call-end', (data) => {
+    io.to(data.to).emit('call-end', data);
+  });
+
+  socket.on('call-reject', (data) => {
+    io.to(data.to).emit('call-reject', data);
+  });
+
   socket.on('disconnect', async () => {
     if (socket.email) {
       await User.findOneAndUpdate({ email: socket.email }, { online: false });
