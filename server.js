@@ -9,9 +9,9 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const resend = new Resend(process.env.RESEND_KEY || 're_DvzfQTsY_MWv4SpUS5Jh9kWQHbreM6kMQ');
+const resend = new Resend(process.env.RESEND_KEY || process.env.RESEND_KEY);
 
-mongoose.connect(process.env.MONGO_URL || 'mongodb+srv://amanalam:aman8070@cluster0.an4ayhj.mongodb.net/whatsapp?appName=Cluster0')
+mongoose.connect(process.env.MONGO_URL || 'mongodb+srv://amanalam:process.env.MONGO_PASS@cluster0.an4ayhj.mongodb.net/whatsapp?appName=Cluster0')
 .then(() => console.log('MongoDB connected!'))
 .catch(err => console.log(err));
 
