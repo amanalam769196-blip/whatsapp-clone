@@ -30,9 +30,11 @@ input::placeholder{color:#8696a0}
 .msg-sent{background:#005c4b;margin-left:auto;border-radius:8px 0 8px 8px}
 .msg-received{background:#1f2c34;border-radius:0 8px 8px 8px}
 .msg-time{font-size:10px;color:#8696a0;text-align:right;margin-top:3px}
-#input-area{background:#1f2c34;padding:10px;display:flex;gap:10px}
+.msg img{max-width:200px;border-radius:8px;cursor:pointer}
+#input-area{background:#1f2c34;padding:10px;display:flex;gap:10px;align-items:center}
 #msg-input{flex:1;padding:10px;border:none;border-radius:20px;background:#2a3942;color:white;font-size:16px}
 #send-btn{background:#25d366;border:none;border-radius:50%;width:45px;height:45px;color:white;font-size:20px;cursor:pointer}
+#img-btn{background:#2a3942;border:none;border-radius:50%;width:45px;height:45px;color:white;font-size:20px;cursor:pointer}
 .logout-btn{background:transparent;border:1px solid #ef4444;color:#ef4444;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px}
 </style>
 </head>
@@ -69,6 +71,8 @@ input::placeholder{color:#8696a0}
 </div>
 <div id="messages"></div>
 <div id="input-area">
+<button id="img-btn" onclick="document.getElementById('img-input').click()">📷</button>
+<input type="file" id="img-input" accept="image/*" style="display:none" onchange="sendImage()">
 <input id="msg-input" placeholder="Message likho..." onkeypress="if(event.key==='Enter')sendMessage()">
 <button id="send-btn" onclick="sendMessage()">➤</button>
 </div>
@@ -94,9 +98,9 @@ async function sendOTP(){
     document.getElementById('success').textContent = 'Bhej rahe hain...';
     var r = await fetch('/send-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,name})});
     var d = await r.json();
-    if(d.error){ document.getElementById('error').textContent = d.error; document.getElementById('success').textContent = ''; }
-    else { document.getElementById('success').textContent = 'OTP bhej diya! Email check karo!'; document.getElementById('otp-section').style.display='block'; }
-  } catch(e) { document.getElementById('error').textContent = 'Network error!'; }
+    if(d.error){ document.getElementById('error').textContent = d.error; document.getElementById('success').textContent=''; }
+    else { document.getElementById('success').textContent='OTP bhej diya! Email check karo!'; document.getElementById('otp-section').style.display='block'; }
+  } catch(e) { document.getElementById('error').textContent='Network error!'; }
 }
 
 async function verifyOTP(){
@@ -105,13 +109,13 @@ async function verifyOTP(){
   try {
     var r = await fetch('/verify-otp',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,otp})});
     var d = await r.json();
-    if(d.error){ document.getElementById('error').textContent = d.error; }
+    if(d.error){ document.getElementById('error').textContent=d.error; }
     else {
       localStorage.setItem('token',d.token); localStorage.setItem('email',d.email); localStorage.setItem('name',d.name);
       myEmail=d.email; myName=d.name; myToken=d.token;
       showChatPage();
     }
-  } catch(e) { document.getElementById('error').textContent = 'Network error!'; }
+  } catch(e) { document.getElementById('error').textContent='Network error!'; }
 }
 
 async function showChatPage(){
@@ -142,9 +146,9 @@ async function openChat(email, name){
   currentChat = {email, name};
   document.getElementById('chat-page').style.display='none';
   document.getElementById('chat-window').style.display='flex';
-  document.getElementById('chat-name').textContent = name;
-  document.getElementById('chat-avatar').textContent = name[0].toUpperCase();
-  document.getElementById('messages').innerHTML = '';
+  document.getElementById('chat-name').textContent=name;
+  document.getElementById('chat-avatar').textContent=name[0].toUpperCase();
+  document.getElementById('messages').innerHTML='';
   try {
     var r = await fetch('/messages/'+myEmail+'/'+email);
     var msgs = await r.json();
@@ -155,24 +159,43 @@ async function openChat(email, name){
 function goBack(){
   document.getElementById('chat-window').style.display='none';
   document.getElementById('chat-page').style.display='flex';
-  currentChat = null;
+  currentChat=null;
   loadUsers();
 }
 
 function addMessage(data){
   var div = document.createElement('div');
-  div.className = 'msg '+(data.from===myEmail?'msg-sent':'msg-received');
+  div.className='msg '+(data.from===myEmail?'msg-sent':'msg-received');
   var time = new Date(data.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-  div.innerHTML = data.text+'<div class="msg-time">'+time+'</div>';
+  var content = '';
+  if(data.image) content += '<img src="'+data.image+'" onclick="window.open(this.src)">';
+  if(data.text) content += data.text;
+  content += '<div class="msg-time">'+time+(data.from===myEmail?' ✓✓':'')+'</div>';
+  div.innerHTML=content;
   document.getElementById('messages').appendChild(div);
-  document.getElementById('messages').scrollTop = 999999;
+  document.getElementById('messages').scrollTop=999999;
 }
 
 function sendMessage(){
   var text = document.getElementById('msg-input').value.trim();
   if(!text || !currentChat) return;
-  socket.emit('private-message',{from:myEmail, fromName:myName, to:currentChat.email, text, time:new Date()});
+  socket.emit('private-message',{from:myEmail,fromName:myName,to:currentChat.email,text,time:new Date()});
   document.getElementById('msg-input').value='';
+}
+
+async function sendImage(){
+  var file = document.getElementById('img-input').files[0];
+  if(!file || !currentChat) return;
+  var formData = new FormData();
+  formData.append('image', file);
+  try {
+    var r = await fetch('/upload-image',{method:'POST',body:formData});
+    var d = await r.json();
+    if(d.imageUrl){
+      socket.emit('private-message',{from:myEmail,fromName:myName,to:currentChat.email,text:'',image:d.imageUrl,time:new Date()});
+    }
+  } catch(e) { console.log(e); }
+  document.getElementById('img-input').value='';
 }
 
 socket.on('private-message', function(data){
@@ -181,9 +204,7 @@ socket.on('private-message', function(data){
   }
 });
 
-socket.on('user-status', function(data){
-  loadUsers();
-});
+socket.on('user-status', function(data){ loadUsers(); });
 
 function logout(){ localStorage.clear(); location.reload(); }
 </script>

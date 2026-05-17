@@ -5,6 +5,8 @@ const io = require('socket.io')(http);
 const mongoose = require('mongoose');
 const { Resend } = require('resend');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
+const path = require('path');
 
 const resend = new Resend(process.env.RESEND_KEY || 're_DvzfQTsY_MWv4SpUS5Jh9kWQHbreM6kMQ');
 
@@ -24,6 +26,7 @@ const messageSchema = new mongoose.Schema({
   from: String,
   to: String,
   text: String,
+  image: String,
   time: { type: Date, default: Date.now },
   delivered: { type: Boolean, default: false },
   read: { type: Boolean, default: false }
@@ -35,6 +38,16 @@ const Message = mongoose.model('Message', messageSchema);
 const SECRET = 'whatsapp-secret-key';
 app.use(express.json());
 app.use(express.static('public'));
+app.use('/uploads', express.static('uploads'));
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => cb(null, 'uploads/'),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
+});
+const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
+
+const fs = require('fs');
+if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
 
 app.post('/send-otp', async (req, res) => {
   try {
@@ -53,7 +66,6 @@ app.post('/send-otp', async (req, res) => {
       html: `<h2>Your OTP Code</h2><p>Your OTP is: <b>${otp}</b></p><p>Valid for 10 minutes.</p>`
     });
     if (error) return res.json({ error: error.message });
-    console.log('OTP sent to:', email);
     res.json({ success: true });
   } catch(err) {
     res.json({ error: err.message });
@@ -89,10 +101,14 @@ app.get('/messages/:from/:to', async (req, res) => {
   res.json(messages);
 });
 
-app.post('/read-messages', async (req, res) => {
-  const { from, to } = req.body;
-  await Message.updateMany({ from, to, read: false }, { read: true });
-  res.json({ success: true });
+app.post('/upload-image', upload.single('image'), async (req, res) => {
+  try {
+    if (!req.file) return res.json({ error: 'Image nahi mili!' });
+    const imageUrl = '/uploads/' + req.file.filename;
+    res.json({ success: true, imageUrl });
+  } catch(err) {
+    res.json({ error: err.message });
+  }
 });
 
 io.on('connection', (socket) => {
@@ -108,11 +124,6 @@ io.on('connection', (socket) => {
     await msg.save();
     io.to(data.to).emit('private-message', { ...data, delivered: true, read: false });
     io.to(data.from).emit('private-message', { ...data, delivered: true, read: false });
-  });
-
-  socket.on('message-read', async (data) => {
-    await Message.updateMany({ from: data.from, to: data.to, read: false }, { read: true });
-    io.to(data.from).emit('message-read', data);
   });
 
   socket.on('disconnect', async () => {
