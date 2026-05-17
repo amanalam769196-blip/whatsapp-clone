@@ -7,6 +7,7 @@ const { Resend } = require('resend');
 const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 const resend = new Resend(process.env.RESEND_KEY || 're_DvzfQTsY_MWv4SpUS5Jh9kWQHbreM6kMQ');
 
@@ -27,6 +28,7 @@ const messageSchema = new mongoose.Schema({
   to: String,
   text: String,
   image: String,
+  audio: String,
   time: { type: Date, default: Date.now },
   delivered: { type: Boolean, default: false },
   read: { type: Boolean, default: false }
@@ -40,14 +42,13 @@ app.use(express.json());
 app.use(express.static('public'));
 app.use('/uploads', express.static('uploads'));
 
+if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, 'uploads/'),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
-const upload = multer({ storage, limits: { fileSize: 5 * 1024 * 1024 } });
-
-const fs = require('fs');
-if (!fs.existsSync('uploads')) fs.mkdirSync('uploads');
+const upload = multer({ storage, limits: { fileSize: 10 * 1024 * 1024 } });
 
 app.post('/send-otp', async (req, res) => {
   try {
@@ -104,8 +105,16 @@ app.get('/messages/:from/:to', async (req, res) => {
 app.post('/upload-image', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.json({ error: 'Image nahi mili!' });
-    const imageUrl = '/uploads/' + req.file.filename;
-    res.json({ success: true, imageUrl });
+    res.json({ success: true, imageUrl: '/uploads/' + req.file.filename });
+  } catch(err) {
+    res.json({ error: err.message });
+  }
+});
+
+app.post('/upload-audio', upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) return res.json({ error: 'Audio nahi mili!' });
+    res.json({ success: true, audioUrl: '/uploads/' + req.file.filename });
   } catch(err) {
     res.json({ error: err.message });
   }
