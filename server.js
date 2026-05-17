@@ -9,9 +9,9 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 
-const resend = new Resend(process.env.RESEND_KEY || process.env.RESEND_KEY);
+const resend = new Resend(process.env.RESEND_KEY);
 
-mongoose.connect(process.env.MONGO_URL || 'mongodb+srv://amanalam:process.env.MONGO_PASS@cluster0.an4ayhj.mongodb.net/whatsapp?appName=Cluster0')
+mongoose.connect(process.env.MONGO_URL)
 .then(() => console.log('MongoDB connected!'))
 .catch(err => console.log(err));
 
@@ -26,6 +26,7 @@ const userSchema = new mongoose.Schema({
 const messageSchema = new mongoose.Schema({
   from: String,
   to: String,
+  groupId: String,
   text: String,
   image: String,
   audio: String,
@@ -34,8 +35,16 @@ const messageSchema = new mongoose.Schema({
   read: { type: Boolean, default: false }
 });
 
+const groupSchema = new mongoose.Schema({
+  name: String,
+  members: [String],
+  admin: String,
+  time: { type: Date, default: Date.now }
+});
+
 const User = mongoose.model('User', userSchema);
 const Message = mongoose.model('Message', messageSchema);
+const Group = mongoose.model('Group', groupSchema);
 
 const SECRET = 'whatsapp-secret-key';
 app.use(express.json());
@@ -102,6 +111,27 @@ app.get('/messages/:from/:to', async (req, res) => {
   res.json(messages);
 });
 
+app.post('/create-group', async (req, res) => {
+  try {
+    const { name, members, admin } = req.body;
+    const group = new Group({ name, members, admin });
+    await group.save();
+    res.json({ success: true, group });
+  } catch(err) {
+    res.json({ error: err.message });
+  }
+});
+
+app.get('/groups/:email', async (req, res) => {
+  const groups = await Group.find({ members: req.params.email });
+  res.json(groups);
+});
+
+app.get('/group-messages/:groupId', async (req, res) => {
+  const messages = await Message.find({ groupId: req.params.groupId }).sort({ time: 1 });
+  res.json(messages);
+});
+
 app.post('/upload-image', upload.single('image'), async (req, res) => {
   try {
     if (!req.file) return res.json({ error: 'Image nahi mili!' });
@@ -135,25 +165,26 @@ io.on('connection', (socket) => {
     io.to(data.from).emit('private-message', { ...data, delivered: true, read: false });
   });
 
-  socket.on('call-offer', (data) => {
-    io.to(data.to).emit('call-offer', data);
+  socket.on('group-message', async (data) => {
+    const msg = new Message({ ...data, delivered: true });
+    await msg.save();
+    const group = await Group.findById(data.groupId);
+    if (group) {
+      group.members.forEach(member => {
+        io.to(member).emit('group-message', data);
+      });
+    }
   });
 
-  socket.on('call-answer', (data) => {
-    io.to(data.to).emit('call-answer', data);
+  socket.on('join-group', (groupId) => {
+    socket.join('group:' + groupId);
   });
 
-  socket.on('ice-candidate', (data) => {
-    io.to(data.to).emit('ice-candidate', data);
-  });
-
-  socket.on('call-end', (data) => {
-    io.to(data.to).emit('call-end', data);
-  });
-
-  socket.on('call-reject', (data) => {
-    io.to(data.to).emit('call-reject', data);
-  });
+  socket.on('call-offer', (data) => { io.to(data.to).emit('call-offer', data); });
+  socket.on('call-answer', (data) => { io.to(data.to).emit('call-answer', data); });
+  socket.on('ice-candidate', (data) => { io.to(data.to).emit('ice-candidate', data); });
+  socket.on('call-end', (data) => { io.to(data.to).emit('call-end', data); });
+  socket.on('call-reject', (data) => { io.to(data.to).emit('call-reject', data); });
 
   socket.on('disconnect', async () => {
     if (socket.email) {
