@@ -345,7 +345,14 @@ function addMessage(data,isGroup){
   if(data.audio) content+='<audio controls src="'+data.audio+'"></audio>';
   if(data.text) content+=data.text;
   content+='<div class="msg-time">'+time+(data.from===myEmail?' ✓✓':'')+'</div>';
+  div.setAttribute("data-id", data._id || "");
   div.innerHTML=content;
+  if(data.from===myEmail){
+    div.addEventListener("click", function(){
+      var id=this.getAttribute("data-id");
+      if(id) deleteMsg(id);
+    });
+  }
   document.getElementById('messages').appendChild(div);
   document.getElementById('messages').scrollTop=999999;
 }
