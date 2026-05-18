@@ -8,8 +8,15 @@ const jwt = require('jsonwebtoken');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const webpush = require('web-push');
 
 const resend = new Resend(process.env.RESEND_KEY);
+
+webpush.setVapidDetails(
+  process.env.VAPID_EMAIL || 'mailto:amanalam769196@gmail.com',
+  process.env.VAPID_PUBLIC || 'BC7QWLb-X8LRs-ez1dt6bv_N2bkQ4MoH4wxeteBoADrZYr1Sp_RL1bypdFUra1QzYWb9Jav2SwUYHEC4f7jUIlY',
+  process.env.VAPID_PRIVATE || 'KvMfeJaEwU2o2Z7GGZE3ZX4Uekny-kXgPIa0Ql8d7nk'
+);
 
 mongoose.connect(process.env.MONGO_URL)
 .then(() => console.log('MongoDB connected!'))
@@ -20,7 +27,8 @@ const userSchema = new mongoose.Schema({
   name: String,
   otp: String,
   otpExpiry: Date,
-  online: { type: Boolean, default: false }
+  online: { type: Boolean, default: false },
+  pushSubscription: Object
 });
 
 const messageSchema = new mongoose.Schema({
@@ -98,6 +106,20 @@ app.post('/verify-otp', async (req, res) => {
   }
 });
 
+app.post('/save-subscription', async (req, res) => {
+  try {
+    const { email, subscription } = req.body;
+    await User.findOneAndUpdate({ email }, { pushSubscription: subscription });
+    res.json({ success: true });
+  } catch(err) {
+    res.json({ error: err.message });
+  }
+});
+
+app.get('/vapid-public', (req, res) => {
+  res.json({ key: process.env.VAPID_PUBLIC || 'BC7QWLb-X8LRs-ez1dt6bv_N2bkQ4MoH4wxeteBoADrZYr1Sp_RL1bypdFUra1QzYWb9Jav2SwUYHEC4f7jUIlY' });
+});
+
 app.get('/users', async (req, res) => {
   const users = await User.find({}, 'email name online');
   res.json(users);
@@ -163,6 +185,15 @@ io.on('connection', (socket) => {
     await msg.save();
     io.to(data.to).emit('private-message', { ...data, delivered: true, read: false });
     io.to(data.from).emit('private-message', { ...data, delivered: true, read: false });
+    try {
+      const toUser = await User.findOne({ email: data.to });
+      if (toUser && toUser.pushSubscription && !toUser.online) {
+        await webpush.sendNotification(toUser.pushSubscription, JSON.stringify({
+          title: data.fromName,
+          body: data.text || '📷 Image ya 🎤 Voice message'
+        }));
+      }
+    } catch(e) { console.log('Push error:', e.message); }
   });
 
   socket.on('group-message', async (data) => {
@@ -176,10 +207,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  socket.on('join-group', (groupId) => {
-    socket.join('group:' + groupId);
-  });
-
+  socket.on('join-group', (groupId) => { socket.join('group:' + groupId); });
   socket.on('call-offer', (data) => { io.to(data.to).emit('call-offer', data); });
   socket.on('call-answer', (data) => { io.to(data.to).emit('call-answer', data); });
   socket.on('ice-candidate', (data) => { io.to(data.to).emit('ice-candidate', data); });
