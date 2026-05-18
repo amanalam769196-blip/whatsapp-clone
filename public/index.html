@@ -554,6 +554,13 @@ async function blockUser(){
     goBack();
   }
 }
+async function deleteMsg(id){
+  if(!id)return;
+  if(confirm("Message delete karna chahte ho?")){
+    await fetch("/message/"+id,{method:"DELETE"});
+    loadMessages();
+  }
+}
 function logout(){localStorage.clear();location.reload();}
 </script>
 </body>

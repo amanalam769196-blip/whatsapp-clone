@@ -1,5 +1,6 @@
 require("dotenv").config();
 require("dotenv").config();
+require("dotenv").config();
 const express = require('express');
 const app = express();
 const http = require('http').createServer(app);
@@ -169,7 +170,14 @@ app.post('/upload-profile', upload.single('photo'), async (req, res) => {
   }
 });
 
-app.post('/upload-image', upload.single('image'), async (req, res) => {
+app.delete("/message/:id", async (req, res) => {
+  try {
+    await Message.findByIdAndDelete(req.params.id);
+    res.json({ success: true });
+  } catch(err) { res.json({ error: err.message }); }
+});
+
+app.post("/upload-image", upload.single("image"), async (req, res) => {
   try {
     if (!req.file) return res.json({ error: 'Image nahi mili!' });
     res.json({ success: true, imageUrl: '/uploads/' + req.file.filename });
