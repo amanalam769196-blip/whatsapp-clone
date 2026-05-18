@@ -206,7 +206,8 @@ io.on('connection', (socket) => {
   socket.on('private-message', async (data) => {
     const msg = new Message({ ...data, delivered: true });
     await msg.save();
-    io.to(data.to).emit('private-message', { ...data, delivered: true, read: false });
+    io.to(data.to).emit("private-message", { ...data, _id: msg._id, delivered: true, read: false });
+    io.to(data.from).emit("private-message", { ...data, _id: msg._id, delivered: true, read: false });
     io.to(data.from).emit('private-message', { ...data, delivered: true, read: false });
     try {
       const toUser = await User.findOne({ email: data.to });
