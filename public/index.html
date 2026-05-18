@@ -120,7 +120,7 @@ input::placeholder{color:#8696a0}
 <div id="chat-status" style="font-size:12px;color:#25d366"></div>
 </div>
 </div>
-<button onclick="blockUser()" style="background:transparent;border:none;color:#ef4444;font-size:20px;cursor:pointer" title="Block">🚫</button>
+<button onclick="toggleBlock()" style="background:transparent;border:none;color:#ef4444;font-size:20px;cursor:pointer" title="Block">🚫</button>
 <div class="call-btns" id="call-btns">
 <button id="voice-btn" onclick="startCall('audio')">📞</button>
 <button id="video-btn" onclick="startCall('video')">📹</button>
@@ -525,6 +525,25 @@ async function uploadPP(){
   var d=await r.json();
   if(d.photoUrl){
     document.getElementById("my-av").innerHTML="<img src=\""+d.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:50%\">";
+  }
+}
+async function toggleBlock(){
+  if(!currentChat)return;
+  var r=await fetch("/users");
+  var users=await r.json();
+  var me=users.find(u=>u.email===myEmail);
+  var isBlocked=me&&me.blockedUsers&&me.blockedUsers.includes(currentChat.email);
+  if(isBlocked){
+    if(confirm(currentChat.name+" ko unblock karna chahte ho?")){
+      await fetch("/unblock-user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:myEmail,blockEmail:currentChat.email})});
+      alert(currentChat.name+" unblock ho gaya!");
+    }
+  } else {
+    if(confirm(currentChat.name+" ko block karna chahte ho?")){
+      await fetch("/block-user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:myEmail,blockEmail:currentChat.email})});
+      alert(currentChat.name+" block ho gaya!");
+      goBack();
+    }
   }
 }
 async function blockUser(){
