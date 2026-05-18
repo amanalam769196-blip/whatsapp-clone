@@ -28,6 +28,7 @@ const userSchema = new mongoose.Schema({
   otp: String,
   otpExpiry: Date,
   online: { type: Boolean, default: false },
+  profilePhoto: { type: String, default: '' },
   pushSubscription: Object
 });
 
@@ -121,7 +122,7 @@ app.get('/vapid-public', (req, res) => {
 });
 
 app.get('/users', async (req, res) => {
-  const users = await User.find({}, 'email name online');
+  const users = await User.find({}, 'email name online profilePhoto');
   res.json(users);
 });
 
@@ -152,6 +153,17 @@ app.get('/groups/:email', async (req, res) => {
 app.get('/group-messages/:groupId', async (req, res) => {
   const messages = await Message.find({ groupId: req.params.groupId }).sort({ time: 1 });
   res.json(messages);
+});
+
+app.post('/upload-profile', upload.single('photo'), async (req, res) => {
+  try {
+    if (!req.file) return res.json({ error: 'Photo nahi mili!' });
+    const photoUrl = '/uploads/' + req.file.filename;
+    await User.findOneAndUpdate({ email: req.body.email }, { profilePhoto: photoUrl });
+    res.json({ success: true, photoUrl });
+  } catch(err) {
+    res.json({ error: err.message });
+  }
 });
 
 app.post('/upload-image', upload.single('image'), async (req, res) => {
@@ -190,7 +202,7 @@ io.on('connection', (socket) => {
       if (toUser && toUser.pushSubscription && !toUser.online) {
         await webpush.sendNotification(toUser.pushSubscription, JSON.stringify({
           title: data.fromName,
-          body: data.text || '📷 Image ya 🎤 Voice message'
+          body: data.text || 'New message'
         }));
       }
     } catch(e) { console.log('Push error:', e.message); }
