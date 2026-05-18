@@ -85,7 +85,7 @@ input::placeholder{color:#8696a0}
 </div>
 
 <div id="chat-page">
-<div id="header"><input type="file" id="pp-input" accept="image/*" style="display:none" onchange="uploadPP()">
+<div id="header">
 <span onclick="showProfile()" style="cursor:pointer">💬 ChatApp</span>
 <div style="display:flex;gap:8px">
 <button id="new-group-btn" onclick="showCreateGroup()">+ Group</button>
@@ -514,18 +514,6 @@ socket.on('group-message',function(data){
 
 socket.on('user-status',function(){loadUsers();});
 
-async function uploadPP(){
-  var file=document.getElementById("pp-input").files[0];
-  if(!file)return;
-  var fd=new FormData();
-  fd.append("photo",file);
-  fd.append("email",myEmail);
-  var r=await fetch("/upload-profile",{method:"POST",body:fd});
-  var d=await r.json();
-  if(d.photoUrl){
-    document.getElementById("my-av").innerHTML="<img src=\""+d.photoUrl+"\" style=\"width:100%;height:100%;object-fit:cover;border-radius:50%\">";
-  }
-}
 function logout(){localStorage.clear();location.reload();}
 </script>
 </body>
