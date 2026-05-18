@@ -117,6 +117,7 @@ input::placeholder{color:#8696a0}
 <div class="user-avatar" id="chat-avatar">👤</div>
 <div style="margin-left:10px">
 <div id="chat-name"></div>
+<div id="typing-status" style="font-size:12px;color:#25d366;display:none">typing...</div>
 <div id="chat-status" style="font-size:12px;color:#25d366"></div>
 </div>
 </div>
@@ -131,7 +132,7 @@ input::placeholder{color:#8696a0}
 <button id="img-btn" onclick="document.getElementById('img-input').click()">📷</button>
 <input type="file" id="img-input" accept="image/*" style="display:none" onchange="sendImage()">
 <button id="mic-btn" onmousedown="startRecording()" onmouseup="stopRecording()" ontouchstart="startRecording()" ontouchend="stopRecording()">🎤</button>
-<input id="msg-input" placeholder="Message likho..." onkeypress="if(event.key==='Enter')sendMessage()">
+<input id="msg-input" placeholder="Message likho..." onkeypress="if(event.key==='Enter')sendMessage()" oninput="showTyping()">
 <button id="send-btn" onclick="sendMessage()">➤</button>
 </div>
 </div>
@@ -180,6 +181,7 @@ var incomingCallType=null;
 var isMuted=false;
 var callType='audio';
 var allUsers=[];
+var typingTimer;
 var iceServers={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
 
 if(myToken){showChatPage();}
@@ -520,7 +522,17 @@ socket.on('group-message',function(data){
   if(currentGroup&&data.groupId===currentGroup.id) addMessage(data,true);
 });
 
-socket.on('user-status',function(){loadUsers();});
+socket.on("typing",function(data){
+  if(currentChat&&data.from===currentChat.email){
+    document.getElementById("typing-status").style.display="block";
+  }
+});
+socket.on("stop-typing",function(data){
+  if(currentChat&&data.from===currentChat.email){
+    document.getElementById("typing-status").style.display="none";
+  }
+});
+socket.on("user-status",function(){loadUsers();});
 
 async function uploadPP(){
   var file=document.getElementById("pp-input").files[0];
@@ -567,6 +579,14 @@ async function deleteMsg(id){
     await fetch("/message/"+id,{method:"DELETE"});
     loadMessages();
   }
+}
+function showTyping(){
+  if(!currentChat)return;
+  socket.emit("typing",{to:currentChat.email,from:myEmail,name:myName});
+  clearTimeout(typingTimer);
+  typingTimer=setTimeout(()=>{
+    socket.emit("stop-typing",{to:currentChat.email,from:myEmail});
+  },2000);
 }
 function logout(){localStorage.clear();location.reload();}
 </script>
