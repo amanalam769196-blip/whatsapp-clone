@@ -29,6 +29,7 @@ const userSchema = new mongoose.Schema({
   otp: String,
   otpExpiry: Date,
   online: { type: Boolean, default: false },
+  lastSeen: { type: Date, default: Date.now },
   profilePhoto: { type: String, default: '' },
   pushSubscription: Object
 });
@@ -123,7 +124,7 @@ app.get('/vapid-public', (req, res) => {
 });
 
 app.get('/users', async (req, res) => {
-  const users = await User.find({}, 'email name online profilePhoto');
+  const users = await User.find({}, 'email name online profilePhoto lastSeen');
   res.json(users);
 });
 
@@ -229,7 +230,7 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', async () => {
     if (socket.email) {
-      await User.findOneAndUpdate({ email: socket.email }, { online: false });
+      await User.findOneAndUpdate({ email: socket.email }, { online: false, lastSeen: new Date() });
       io.emit('user-status', { email: socket.email, online: false });
     }
   });

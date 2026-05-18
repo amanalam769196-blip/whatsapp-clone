@@ -243,7 +243,7 @@ async function loadUsers(){
         html+='<div class="user-item" onclick="openChat(\''+u.email+'\',\''+u.name+'\')">';
         html+='<div class="user-avatar">'+u.name[0].toUpperCase();
         html+='<div class="'+(u.online?'online-dot':'offline-dot')+'"></div></div>';
-        html+='<div><b>'+u.name+'</b><br><small style="color:#8696a0">'+(u.online?'Online':'Offline')+'</small></div></div>';
+        html+='<div><b>'+u.name+'</b><br><small style="color:#8696a0">'+(u.online?'Online':'Last seen: '+new Date(u.lastSeen).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'}))+'</small></div></div>';
       }
     });
     document.getElementById('users-list').innerHTML=html||'<p style="color:#8696a0;padding:20px;text-align:center">Koi user nahi mila!</p>';
