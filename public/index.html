@@ -16,9 +16,14 @@ input::placeholder{color:#8696a0}
 #otp-section{display:none;width:100%}
 #chat-page{display:none;height:100vh;flex-direction:column}
 #header{background:#1f2c34;padding:15px;color:white;font-size:18px;font-weight:bold;display:flex;justify-content:space-between;align-items:center}
-#users-list{background:#111b21;overflow-y:auto;flex:1}
-.user-item{padding:15px;border-bottom:1px solid #2a3942;color:white;cursor:pointer;display:flex;align-items:center}
-.user-avatar{width:45px;height:45px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:15px;color:white;font-weight:bold;position:relative}
+#tabs{display:flex;background:#1f2c34;border-bottom:1px solid #2a3942}
+.tab{flex:1;padding:12px;text-align:center;color:#8696a0;cursor:pointer;font-size:14px}
+.tab.active{color:#25d366;border-bottom:2px solid #25d366}
+#users-list,#groups-list{background:#111b21;overflow-y:auto;flex:1}
+.user-item,.group-item{padding:15px;border-bottom:1px solid #2a3942;color:white;cursor:pointer;display:flex;align-items:center}
+.user-item:hover,.group-item:hover{background:#2a3942}
+.user-avatar,.group-avatar{width:45px;height:45px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;font-size:20px;margin-right:15px;color:white;font-weight:bold;position:relative}
+.group-avatar{background:#075e54}
 .online-dot{width:12px;height:12px;background:#25d366;border-radius:50%;position:absolute;bottom:0;right:0;border:2px solid #111b21}
 .offline-dot{width:12px;height:12px;background:#8696a0;border-radius:50%;position:absolute;bottom:0;right:0;border:2px solid #111b21}
 #chat-window{display:none;height:100vh;flex-direction:column}
@@ -29,6 +34,7 @@ input::placeholder{color:#8696a0}
 .msg{max-width:70%;padding:8px 12px;margin:4px;border-radius:8px;color:white;font-size:14px;word-break:break-word}
 .msg-sent{background:#005c4b;margin-left:auto;border-radius:8px 0 8px 8px}
 .msg-received{background:#1f2c34;border-radius:0 8px 8px 8px}
+.msg-sender{font-size:11px;color:#25d366;margin-bottom:3px}
 .msg-time{font-size:10px;color:#8696a0;text-align:right;margin-top:3px}
 .msg img{max-width:200px;border-radius:8px;cursor:pointer}
 .msg audio{width:200px}
@@ -40,6 +46,13 @@ input::placeholder{color:#8696a0}
 .call-btns{display:flex;gap:8px}
 #voice-btn,#video-btn{background:transparent;border:none;color:#25d366;font-size:22px;cursor:pointer}
 .logout-btn{background:transparent;border:1px solid #ef4444;color:#ef4444;padding:5px 10px;border-radius:5px;cursor:pointer;font-size:12px}
+#new-group-btn{background:#25d366;border:none;color:white;padding:8px 12px;border-radius:5px;cursor:pointer;font-size:13px}
+#create-group-modal{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.8);z-index:50;align-items:center;justify-content:center}
+#create-group-box{background:#1f2c34;padding:20px;border-radius:10px;width:90%;max-width:400px}
+#create-group-box h3{color:white;margin-bottom:15px}
+#member-list{max-height:200px;overflow-y:auto;margin:10px 0}
+.member-item{display:flex;align-items:center;padding:8px;color:white;cursor:pointer}
+.member-item input{width:auto;margin-right:10px}
 #call-screen{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:#111b21;z-index:100;flex-direction:column;align-items:center;justify-content:center}
 #local-video{position:absolute;top:10px;right:10px;width:100px;height:140px;border-radius:8px;object-fit:cover;background:#000}
 #remote-video{width:100%;height:100%;object-fit:cover;background:#000}
@@ -74,9 +87,27 @@ input::placeholder{color:#8696a0}
 <div id="chat-page">
 <div id="header">
 <span>💬 ChatApp</span>
+<div style="display:flex;gap:8px">
+<button id="new-group-btn" onclick="showCreateGroup()">+ Group</button>
 <button class="logout-btn" onclick="logout()">Logout</button>
 </div>
+</div>
+<div id="tabs">
+<div class="tab active" onclick="showTab('chats')">Chats</div>
+<div class="tab" onclick="showTab('groups')">Groups</div>
+</div>
 <div id="users-list"></div>
+<div id="groups-list" style="display:none"></div>
+</div>
+
+<div id="create-group-modal">
+<div id="create-group-box">
+<h3>Naya Group Banao</h3>
+<input id="group-name-input" placeholder="Group ka naam...">
+<div id="member-list"></div>
+<button class="btn" onclick="createGroup()">Group Banao</button>
+<button class="btn" style="background:#ef4444" onclick="hideCreateGroup()">Cancel</button>
+</div>
 </div>
 
 <div id="chat-window">
@@ -89,7 +120,7 @@ input::placeholder{color:#8696a0}
 <div id="chat-status" style="font-size:12px;color:#25d366"></div>
 </div>
 </div>
-<div class="call-btns">
+<div class="call-btns" id="call-btns">
 <button id="voice-btn" onclick="startCall('audio')">📞</button>
 <button id="video-btn" onclick="startCall('video')">📹</button>
 </div>
@@ -136,6 +167,7 @@ var myEmail=localStorage.getItem('email');
 var myName=localStorage.getItem('name');
 var myToken=localStorage.getItem('token');
 var currentChat=null;
+var currentGroup=null;
 var mediaRecorder=null;
 var audioChunks=[];
 var isRecording=false;
@@ -146,7 +178,8 @@ var incomingFrom=null;
 var incomingCallType=null;
 var isMuted=false;
 var callType='audio';
-var iceServers={iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]};
+var allUsers=[];
+var iceServers={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
 
 if(myToken){showChatPage();}
 
@@ -184,14 +217,28 @@ async function showChatPage(){
   document.getElementById('chat-page').style.display='flex';
   socket.emit('join',myEmail);
   loadUsers();
+  loadGroups();
+}
+
+function showTab(tab){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  if(tab==='chats'){
+    document.querySelectorAll('.tab')[0].classList.add('active');
+    document.getElementById('users-list').style.display='block';
+    document.getElementById('groups-list').style.display='none';
+  } else {
+    document.querySelectorAll('.tab')[1].classList.add('active');
+    document.getElementById('users-list').style.display='none';
+    document.getElementById('groups-list').style.display='block';
+  }
 }
 
 async function loadUsers(){
   try{
     var r=await fetch('/users');
-    var users=await r.json();
+    allUsers=await r.json();
     var html='';
-    users.forEach(u=>{
+    allUsers.forEach(u=>{
       if(u.email!==myEmail){
         html+='<div class="user-item" onclick="openChat(\''+u.email+'\',\''+u.name+'\')">';
         html+='<div class="user-avatar">'+u.name[0].toUpperCase();
@@ -203,31 +250,96 @@ async function loadUsers(){
   }catch(e){console.log(e);}
 }
 
+async function loadGroups(){
+  try{
+    var r=await fetch('/groups/'+myEmail);
+    var groups=await r.json();
+    var html='';
+    groups.forEach(g=>{
+      html+='<div class="group-item" onclick="openGroup(\''+g._id+'\',\''+g.name+'\')">';
+      html+='<div class="group-avatar">👥</div>';
+      html+='<div><b>'+g.name+'</b><br><small style="color:#8696a0">'+g.members.length+' members</small></div></div>';
+    });
+    document.getElementById('groups-list').innerHTML=html||'<p style="color:#8696a0;padding:20px;text-align:center">Koi group nahi hai!</p>';
+  }catch(e){console.log(e);}
+}
+
+function showCreateGroup(){
+  var html='';
+  allUsers.forEach(u=>{
+    if(u.email!==myEmail){
+      html+='<div class="member-item"><input type="checkbox" value="'+u.email+'" id="m_'+u.email+'"><label for="m_'+u.email+'">'+u.name+'</label></div>';
+    }
+  });
+  document.getElementById('member-list').innerHTML=html;
+  document.getElementById('create-group-modal').style.display='flex';
+}
+
+function hideCreateGroup(){
+  document.getElementById('create-group-modal').style.display='none';
+}
+
+async function createGroup(){
+  var name=document.getElementById('group-name-input').value.trim();
+  if(!name){alert('Group ka naam daalo!');return;}
+  var members=[myEmail];
+  document.querySelectorAll('#member-list input:checked').forEach(c=>members.push(c.value));
+  if(members.length<2){alert('Kam se kam ek member add karo!');return;}
+  try{
+    var r=await fetch('/create-group',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name,members,admin:myEmail})});
+    var d=await r.json();
+    if(d.success){hideCreateGroup();loadGroups();showTab('groups');}
+  }catch(e){console.log(e);}
+}
+
 async function openChat(email,name){
   currentChat={email,name};
+  currentGroup=null;
   document.getElementById('chat-page').style.display='none';
   document.getElementById('chat-window').style.display='flex';
   document.getElementById('chat-name').textContent=name;
   document.getElementById('chat-avatar').textContent=name[0].toUpperCase();
+  document.getElementById('chat-avatar').style.background='#25d366';
+  document.getElementById('call-btns').style.display='flex';
   document.getElementById('messages').innerHTML='';
   try{
     var r=await fetch('/messages/'+myEmail+'/'+email);
     var msgs=await r.json();
-    msgs.forEach(m=>addMessage(m));
+    msgs.forEach(m=>addMessage(m,false));
+  }catch(e){console.log(e);}
+}
+
+async function openGroup(groupId,name){
+  currentGroup={id:groupId,name};
+  currentChat=null;
+  document.getElementById('chat-page').style.display='none';
+  document.getElementById('chat-window').style.display='flex';
+  document.getElementById('chat-name').textContent=name;
+  document.getElementById('chat-avatar').textContent='👥';
+  document.getElementById('chat-avatar').style.background='#075e54';
+  document.getElementById('call-btns').style.display='none';
+  document.getElementById('messages').innerHTML='';
+  socket.emit('join-group',groupId);
+  try{
+    var r=await fetch('/group-messages/'+groupId);
+    var msgs=await r.json();
+    msgs.forEach(m=>addMessage(m,true));
   }catch(e){console.log(e);}
 }
 
 function goBack(){
   document.getElementById('chat-window').style.display='none';
   document.getElementById('chat-page').style.display='flex';
-  currentChat=null;loadUsers();
+  currentChat=null;currentGroup=null;
+  loadUsers();loadGroups();
 }
 
-function addMessage(data){
+function addMessage(data,isGroup){
   var div=document.createElement('div');
   div.className='msg '+(data.from===myEmail?'msg-sent':'msg-received');
   var time=new Date(data.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   var content='';
+  if(isGroup&&data.from!==myEmail) content+='<div class="msg-sender">'+data.fromName+'</div>';
   if(data.image) content+='<img src="'+data.image+'" onclick="window.open(this.src)">';
   if(data.audio) content+='<audio controls src="'+data.audio+'"></audio>';
   if(data.text) content+=data.text;
@@ -239,21 +351,28 @@ function addMessage(data){
 
 function sendMessage(){
   var text=document.getElementById('msg-input').value.trim();
-  if(!text||!currentChat)return;
-  socket.emit('private-message',{from:myEmail,fromName:myName,to:currentChat.email,text,time:new Date()});
+  if(!text)return;
+  if(currentChat){
+    socket.emit('private-message',{from:myEmail,fromName:myName,to:currentChat.email,text,time:new Date()});
+  } else if(currentGroup){
+    socket.emit('group-message',{from:myEmail,fromName:myName,groupId:currentGroup.id,text,time:new Date()});
+  }
   document.getElementById('msg-input').value='';
 }
 
-async
-function sendImage(){
+async function sendImage(){
   var file=document.getElementById('img-input').files[0];
-  if(!file||!currentChat)return;
+  if(!file)return;
   var formData=new FormData();
   formData.append('image',file);
-  fetch('/upload-image',{method:'POST',body:formData})
-  .then(r=>r.json()).then(d=>{
-    if(d.imageUrl) socket.emit('private-message',{from:myEmail,fromName:myName,to:currentChat.email,text:'',image:d.imageUrl,time:new Date()});
-  });
+  try{
+    var r=await fetch('/upload-image',{method:'POST',body:formData});
+    var d=await r.json();
+    if(d.imageUrl){
+      if(currentChat) socket.emit('private-message',{from:myEmail,fromName:myName,to:currentChat.email,text:'',image:d.imageUrl,time:new Date()});
+      else if(currentGroup) socket.emit('group-message',{from:myEmail,fromName:myName,groupId:currentGroup.id,text:'',image:d.imageUrl,time:new Date()});
+    }
+  }catch(e){console.log(e);}
   document.getElementById('img-input').value='';
 }
 
@@ -279,9 +398,11 @@ async function stopRecording(){
     var blob=new Blob(audioChunks,{type:'audio/webm'});
     var formData=new FormData();
     formData.append('audio',blob,'voice.webm');
-    fetch('/upload-audio',{method:'POST',body:formData})
-    .then(r=>r.json()).then(d=>{
-      if(d.audioUrl) socket.emit('private-message',{from:myEmail,fromName:myName,to:currentChat.email,text:'',audio:d.audioUrl,time:new Date()});
+    fetch('/upload-audio',{method:'POST',body:formData}).then(r=>r.json()).then(d=>{
+      if(d.audioUrl){
+        if(currentChat) socket.emit('private-message',{from:myEmail,fromName:myName,to:currentChat.email,text:'',audio:d.audioUrl,time:new Date()});
+        else if(currentGroup) socket.emit('group-message',{from:myEmail,fromName:myName,groupId:currentGroup.id,text:'',audio:d.audioUrl,time:new Date()});
+      }
     });
   };
 }
@@ -304,17 +425,15 @@ async function startCall(type){
     await peerConnection.setLocalDescription(offer);
     socket.emit('call-offer',{to:currentChat.email,from:myEmail,fromName:myName,offer,callType:type});
     document.getElementById('call-screen').style.display='flex';
-    document.getElementById('call-name-display').textContent=currentChat.name;
+    document.getElementById('call-name-display').textC
+ontent=currentChat.name;
     document.getElementById('call-status-display').textContent='Calling...';
-    document.getElementById('cam-toggle-btn').style.display=type==='video'?'block':'none';
   }catch(e){alert('Camera/Microphone access do!');}
 }
 
 async function acceptCall(){
   document.getElementById('incoming-call').style.display='none';
   document.getElementById('call-screen').style.display='flex';
-  document.getElementById('call-name-display').textContent=incomingFrom;
-  document.getElementById('call-status-display').textContent='Connected';
   callType=incomingCallType;
   try{
     var constraints=callType==='video'?{audio:true,video:true}:{audio:true};
@@ -331,36 +450,30 @@ async function acceptCall(){
     var answer=await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
     socket.emit('call-answer',{to:incomingFrom,from:myEmail,answer});
+    document.getElementById('call-status-display').textContent='Connected';
   }catch(e){console.log(e);}
 }
 
 function rejectCall(){
-  socket.emit('call-reject',{to:incomingFrom,from:myEmail});
+  socket.emit('call-reject',{to:incomingFrom});
   document.getElementById('incoming-call').style.display='none';
 }
 
 function endCall(){
   if(peerConnection){peerConnection.close();peerConnection=null;}
   if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
-  if(currentChat) socket.emit('call-end',{to:currentChat.email,from:myEmail});
+  if(currentChat) socket.emit('call-end',{to:currentChat.email});
   document.getElementById('call-screen').style.display='none';
-  document.getElementById('remote-video').srcObject=null;
-  document.getElementById('local-video').srcObject=null;
 }
 
 function toggleMute(){
-  if(localStream){
-    isMuted=!isMuted;
-    localStream.getAudioTracks().forEach(t=>t.enabled=!isMuted);
-    document.querySelector('.mute-btn').textContent=isMuted?'🔈':'🔇';
-  }
+  isMuted=!isMuted;
+  if(localStream) localStream.getAudioTracks().forEach(t=>t.enabled=!isMuted);
+  document.querySelector('.mute-btn').textContent=isMuted?'🔈':'🔇';
 }
 
 function toggleCamera(){
-  if(localStream){
-    var videoTrack=localStream.getVideoTracks()[0];
-    if(videoTrack) videoTrack.enabled=!videoTrack.enabled;
-  }
+  if(localStream){var v=localStream.getVideoTracks()[0];if(v)v.enabled=!v.enabled;}
 }
 
 socket.on('call-offer',async(data)=>{
@@ -373,10 +486,7 @@ socket.on('call-offer',async(data)=>{
 });
 
 socket.on('call-answer',async(data)=>{
-  if(peerConnection){
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-    document.getElementById('call-status-display').textContent='Connected';
-  }
+  if(peerConnection){await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));document.getElementById('call-status-display').textContent='Connected';}
 });
 
 socket.on('ice-candidate',async(data)=>{
@@ -387,8 +497,6 @@ socket.on('call-end',()=>{
   if(peerConnection){peerConnection.close();peerConnection=null;}
   if(localStream){localStream.getTracks().forEach(t=>t.stop());localStream=null;}
   document.getElementById('call-screen').style.display='none';
-  document.getElementById('remote-video').srcObject=null;
-  document.getElementById('local-video').srcObject=null;
 });
 
 socket.on('call-reject',()=>{
@@ -397,10 +505,14 @@ socket.on('call-reject',()=>{
 });
 
 socket.on('private-message',function(data){
-  if(currentChat&&(data.from===currentChat.email||data.to===currentChat.email)) addMessage(data);
+  if(currentChat&&(data.from===currentChat.email||data.to===currentChat.email)) addMessage(data,false);
 });
 
-socket.on('user-status',function(data){loadUsers();});
+socket.on('group-message',function(data){
+  if(currentGroup&&data.groupId===currentGroup.id) addMessage(data,true);
+});
+
+socket.on('user-status',function(){loadUsers();});
 
 function logout(){localStorage.clear();location.reload();}
 </script>
