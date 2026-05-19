@@ -95,9 +95,11 @@ input::placeholder{color:#8696a0}
 <div id="tabs">
 <div class="tab active" onclick="showTab('chats')">Chats</div>
 <div class="tab" onclick="showTab('groups')">Groups</div>
+<div class="tab" onclick="showTab('status')">Status</div>
 </div>
 <div id="users-list"></div>
 <div id="groups-list" style="display:none"></div>
+<div id="status-list" style="display:none;background:#111b21;overflow-y:auto;flex:1"></div>
 </div>
 
 <div id="create-group-modal">
@@ -231,7 +233,14 @@ function showTab(tab){
   if(tab==='chats'){
     document.querySelectorAll('.tab')[0].classList.add('active');
     document.getElementById('users-list').style.display='block';
-    document.getElementById('groups-list').style.display='none';
+    document.getElementById("groups-list").style.display="none";
+    document.getElementById("status-list").style.display="none";
+  } else if(tab==="status"){
+    document.querySelectorAll(".tab")[2].classList.add("active");
+    document.getElementById("users-list").style.display="none";
+    document.getElementById("groups-list").style.display="none";
+    document.getElementById("status-list").style.display="block";
+    loadStatuses();
   } else {
     document.querySelectorAll('.tab')[1].classList.add('active');
     document.getElementById('users-list').style.display='none';
@@ -561,6 +570,12 @@ async function toggleBlock(){
       await fetch("/unblock-user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:myEmail,blockEmail:currentChat.email})});
       alert(currentChat.name+" unblock ho gaya!");
     }
+  } else if(tab==="status"){
+    document.querySelectorAll(".tab")[2].classList.add("active");
+    document.getElementById("users-list").style.display="none";
+    document.getElementById("groups-list").style.display="none";
+    document.getElementById("status-list").style.display="block";
+    loadStatuses();
   } else {
     if(confirm(currentChat.name+" ko block karna chahte ho?")){
       await fetch("/block-user",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:myEmail,blockEmail:currentChat.email})});
@@ -593,6 +608,25 @@ function setReply(data){
 function cancelReply(){
   replyData=null;
   document.getElementById("reply-preview").style.display="none";
+}
+async function loadStatuses(){
+  try{
+    var r=await fetch("/statuses");
+    var statuses=await r.json();
+    var html='<div style="padding:15px;border-bottom:1px solid #2a3942;color:white;cursor:pointer" onclick="addStatus()">➕ Add Status</div>';
+    statuses.forEach(s=>{
+      html+='<div style="padding:15px;border-bottom:1px solid #2a3942;color:white;display:flex;align-items:center">';
+      html+='<div style="width:45px;height:45px;border-radius:50%;background:#25d366;display:flex;align-items:center;justify-content:center;margin-right:15px;font-weight:bold">'+s.name[0].toUpperCase()+'</div>';
+      html+='<div><b>'+s.name+'</b><br><small style="color:#8696a0">'+s.text+'</small></div></div>';
+    });
+    document.getElementById("status-list").innerHTML=html;
+  }catch(e){console.log(e);}
+}
+async function addStatus(){
+  var text=prompt("Status kya likhna hai?");
+  if(!text)return;
+  await fetch("/add-status",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({email:myEmail,name:myName,text})});
+  loadStatuses();
 }
 function showTyping(){
   if(!currentChat)return;

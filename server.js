@@ -59,6 +59,15 @@ const groupSchema = new mongoose.Schema({
 
 const User = mongoose.model('User', userSchema);
 const Message = mongoose.model('Message', messageSchema);
+const statusSchema = new mongoose.Schema({
+  email: String,
+  name: String,
+  text: String,
+  image: String,
+  time: { type: Date, default: Date.now },
+  expiresAt: { type: Date, default: () => new Date(Date.now() + 24*60*60*1000) }
+});
+const Status = mongoose.model("Status", statusSchema);
 const Group = mongoose.model('Group', groupSchema);
 
 const SECRET = 'whatsapp-secret-key';
@@ -177,6 +186,20 @@ app.delete("/message/:id", async (req, res) => {
     await Message.findByIdAndDelete(req.params.id);
     res.json({ success: true });
   } catch(err) { res.json({ error: err.message }); }
+});
+
+app.post("/add-status", async (req, res) => {
+  try {
+    const { email, name, text } = req.body;
+    const status = new Status({ email, name, text });
+    await status.save();
+    res.json({ success: true });
+  } catch(err) { res.json({ error: err.message }); }
+});
+
+app.get("/statuses", async (req, res) => {
+  const statuses = await Status.find({ expiresAt: { $gt: new Date() } }).sort({ time: -1 });
+  res.json(statuses);
 });
 
 app.post("/upload-image", upload.single("image"), async (req, res) => {
