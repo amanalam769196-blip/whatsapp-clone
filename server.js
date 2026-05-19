@@ -38,6 +38,7 @@ const userSchema = new mongoose.Schema({
 });
 
 const messageSchema = new mongoose.Schema({
+  replyTo: { text: String, from: String },
   from: String,
   to: String,
   groupId: String,

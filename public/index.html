@@ -128,6 +128,8 @@ input::placeholder{color:#8696a0}
 </div>
 </div>
 <div id="messages"></div>
+<div id="reply-preview" style="display:none;background:#1f2c34;padding:8px 15px;color:#8696a0;font-size:13px;border-left:3px solid #25d366"><span id="reply-text"></span><button onclick="cancelReply()" style="float:right;background:none;border:none;color:#ef4444;cursor:pointer">✕</button></div>
+<div id="reply-preview" style="display:none;background:#1f2c34;padding:8px 15px;color:#8696a0;font-size:13px;border-left:3px solid #25d366"><span id="reply-text"></span><button onclick="cancelReply()" style="float:right;background:none;border:none;color:#ef4444;cursor:pointer">✕</button></div>
 <div id="input-area">
 <button id="img-btn" onclick="document.getElementById('img-input').click()">📷</button>
 <input type="file" id="img-input" accept="image/*" style="display:none" onchange="sendImage()">
@@ -182,6 +184,7 @@ var isMuted=false;
 var callType='audio';
 var allUsers=[];
 var typingTimer;
+var replyData=null;
 var iceServers={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
 
 if(myToken){showChatPage();}
@@ -343,6 +346,7 @@ function addMessage(data,isGroup){
   var time=new Date(data.time).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
   var content='';
   if(isGroup&&data.from!==myEmail) content+='<div class="msg-sender">'+data.fromName+'</div>';
+  if(data.replyTo&&data.replyTo.text) content+="<div style=\"background:rgba(0,0,0,0.2);padding:5px;border-radius:5px;margin-bottom:5px;border-left:3px solid #25d366;font-size:12px\"><b>"+data.replyTo.from+"</b><br>"+data.replyTo.text+"</div>";
   if(data.image) content+='<img src="'+data.image+'" onclick="window.open(this.src)">';
   if(data.audio) content+='<audio controls src="'+data.audio+'"></audio>';
   if(data.text) content+=data.text;
@@ -579,6 +583,16 @@ async function deleteMsg(id){
     await fetch("/message/"+id,{method:"DELETE"});
     loadMessages();
   }
+}
+function setReply(data){
+  replyData={text:data.text,from:data.fromName||data.from};
+  document.getElementById("reply-preview").style.display="block";
+  document.getElementById("reply-text").textContent=replyData.from+": "+replyData.text;
+  document.getElementById("msg-input").focus();
+}
+function cancelReply(){
+  replyData=null;
+  document.getElementById("reply-preview").style.display="none";
 }
 function showTyping(){
   if(!currentChat)return;
