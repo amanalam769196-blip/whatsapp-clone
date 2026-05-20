@@ -68,6 +68,7 @@ input::placeholder{color:#8696a0}
 #incoming-name{font-size:22px;font-weight:bold;margin:10px 0}
 #incoming-type{color:#8696a0;margin-bottom:30px}
 #incoming-controls{display:flex;gap:30px}
+.light-mode{background:#f0f2f5 !important}.light-mode #header,.light-mode #chat-header,.light-mode #input-area,.light-mode #tabs{background:#ffffff !important}.light-mode .user-item,.light-mode .group-item{color:#000 !important}.light-mode #messages{background:#efeae2 !important}.light-mode .msg-received{background:#ffffff !important}.light-mode #users-list,.light-mode #groups-list,.light-mode #status-list{background:#f0f2f5 !important}.light-mode #msg-input{background:#f0f2f5 !important;color:#000 !important}.light-mode #img-btn,.light-mode #mic-btn{background:#f0f2f5 !important}
 </style>
 </head>
 <body>
@@ -88,6 +89,7 @@ input::placeholder{color:#8696a0}
 <div id="header"><input type="file" id="pp-input" accept="image/*" style="display:none" onchange="uploadPP()">
 <span onclick="showProfile()" style="cursor:pointer">💬 ChatApp</span>
 <div style="display:flex;gap:8px">
+<button onclick="toggleTheme()" style="background:transparent;border:none;color:white;font-size:20px;cursor:pointer" id="theme-btn">🌙</button>
 <button id="new-group-btn" onclick="showCreateGroup()">+ Group</button>
 <button class="logout-btn" onclick="logout()">Logout</button>
 </div>
@@ -190,6 +192,7 @@ var replyData=null;
 var iceServers={iceServers:[{urls:'stun:stun.l.google.com:19302'}]};
 
 if(myToken){showChatPage();}
+if(localStorage.getItem("theme")==="light"){document.body.classList.add("light-mode");document.getElementById("theme-btn")if(myToken){showChatPage();}if(myToken){showChatPage();}(document.getElementById("theme-btn").textContent="☀️");}
 
 async function sendOTP(){
   var name=document.getElementById('name-input').value.trim();
@@ -635,6 +638,12 @@ function showTyping(){
   typingTimer=setTimeout(()=>{
     socket.emit("stop-typing",{to:currentChat.email,from:myEmail});
   },2000);
+}
+function toggleTheme(){
+  document.body.classList.toggle("light-mode");
+  var btn=document.getElementById("theme-btn");
+  btn.textContent=document.body.classList.contains("light-mode")?"☀️":"🌙";
+  localStorage.setItem("theme",document.body.classList.contains("light-mode")?"light":"dark");
 }
 function logout(){localStorage.clear();location.reload();}
 </script>
